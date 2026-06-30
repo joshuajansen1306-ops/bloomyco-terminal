@@ -14,8 +14,10 @@ except ImportError:
     _yf_ok = False
 
 import os
-PORT            = int(os.environ.get("PORT", 4173))
-SHEETS_WEBHOOK  = os.environ.get("SHEETS_WEBHOOK", "")
+PORT             = int(os.environ.get("PORT", 4173))
+AIRTABLE_TOKEN   = os.environ.get("AIRTABLE_TOKEN", "")
+AIRTABLE_BASE_ID = os.environ.get("AIRTABLE_BASE_ID", "")
+AIRTABLE_TABLE   = os.environ.get("AIRTABLE_TABLE", "Registrations")
 YAHOO_BASE = "https://query1.finance.yahoo.com/v8/finance/chart/"
 YAHOO_SEARCH = "https://query1.finance.yahoo.com/v1/finance/search"
 
@@ -174,12 +176,15 @@ class Handler(SimpleHTTPRequestHandler):
             ts    = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
             print(f"[REGISTER] {ts} | {name} | {email}", flush=True)
 
-            # Send to Google Sheets via Apps Script webhook (Name first, then Email ID)
-            if SHEETS_WEBHOOK:
-                payload = json.dumps({"name": name, "email": email, "timestamp": ts}).encode()
+            # Save to Airtable (Name first, then Email ID, then Timestamp)
+            if AIRTABLE_TOKEN and AIRTABLE_BASE_ID:
+                url     = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{urllib.request.quote(AIRTABLE_TABLE)}"
+                payload = json.dumps({
+                    "fields": {"Name": name, "Email ID": email, "Timestamp": ts}
+                }).encode()
                 req = urllib.request.Request(
-                    SHEETS_WEBHOOK, data=payload,
-                    headers={"Content-Type": "application/json"},
+                    url, data=payload,
+                    headers={"Content-Type": "application/json", "Authorization": f"Bearer {AIRTABLE_TOKEN}"},
                     method="POST"
                 )
                 urllib.request.urlopen(req, timeout=8)
