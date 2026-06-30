@@ -5,12 +5,16 @@ import datetime
 import gzip
 import io
 import mimetypes
-import threading
-import http.cookiejar
 import urllib.request
 import urllib.error
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlparse, parse_qs, urlencode, quote as urlquote
+from urllib.parse import urlparse, parse_qs, urlencode
+
+try:
+    import yfinance as yf
+    _yf_ok = True
+except ImportError:
+    _yf_ok = False
 
 import os
 PORT           = int(os.environ.get("PORT", 4173))
@@ -18,41 +22,6 @@ SHEETS_WEBHOOK = os.environ.get("SHEETS_WEBHOOK", "")
 YAHOO_BASE     = "https://query1.finance.yahoo.com/v8/finance/chart/"
 YAHOO_SEARCH   = "https://query1.finance.yahoo.com/v1/finance/search"
 
-_HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-
-# ── Yahoo crumb / cookie management ──────────────────────────────────────────
-_crumb_lock   = threading.Lock()
-_crumb        = None
-_crumb_jar    = None
-_crumb_ts     = 0
-CRUMB_TTL     = 3600  # refresh every hour
-
-def _fetch_crumb():
-    global _crumb, _crumb_jar, _crumb_ts
-    jar    = http.cookiejar.CookieJar()
-    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
-    opener.addheaders = list(_HEADERS.items())
-    try:
-        opener.open("https://finance.yahoo.com/", timeout=10)
-        resp  = opener.open("https://query1.finance.yahoo.com/v1/test/getcrumb", timeout=10)
-        crumb = resp.read().decode("utf-8").strip()
-        if crumb and crumb != "":
-            _crumb, _crumb_jar, _crumb_ts = crumb, jar, time.time()
-            print(f"[CRUMB] refreshed: {crumb[:8]}…", flush=True)
-    except Exception as e:
-        print(f"[CRUMB] error: {e}", flush=True)
-
-def get_crumb():
-    global _crumb_ts
-    with _crumb_lock:
-        if not _crumb or time.time() - _crumb_ts > CRUMB_TTL:
-            _fetch_crumb()
-        return _crumb, _crumb_jar
-
-# warm up crumb on startup in background
-threading.Thread(target=get_crumb, daemon=True).start()
-
-# ── Fundamentals via quoteSummary ─────────────────────────────────────────────
 _fundamentals_cache = {}
 CACHE_TTL = 300
 
@@ -62,42 +31,32 @@ def get_fundamentals(symbol):
         ts, data = _fundamentals_cache[symbol]
         if now - ts < CACHE_TTL:
             return data
-    crumb, jar = get_crumb()
-    if not crumb:
+    if not _yf_ok:
         return {}
     try:
-        modules = "summaryDetail,defaultKeyStatistics,financialData,price"
-        url = (f"https://query1.finance.yahoo.com/v10/finance/quoteSummary/"
-               f"{urlquote(symbol)}?modules={urlquote(modules)}&crumb={urlquote(crumb)}")
-        opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
-        opener.addheaders = list(_HEADERS.items())
-        resp    = opener.open(url, timeout=10)
-        raw     = json.loads(resp.read())
-        result  = (raw.get("quoteSummary") or {}).get("result") or [{}]
-        qs      = result[0] if result else {}
-        sd      = qs.get("summaryDetail",        {})
-        ks      = qs.get("defaultKeyStatistics",  {})
-        pr      = qs.get("price",                 {})
-        def rv(d, *keys):
-            for k in keys:
-                v = d.get(k)
-                if isinstance(v, dict): v = v.get("raw")
-                if v is not None: return v
-            return None
+        t = yf.Ticker(symbol)
+        info = t.info or {}
+        # fast_info as fallback for price-level fields
+        try:
+            fi = t.fast_info
+            mc = getattr(fi, "market_cap", None)
+        except Exception:
+            fi, mc = None, None
         data = {
-            "open":           rv(sd, "open", "regularMarketOpen"),
-            "volume":         rv(pr, "regularMarketVolume") or rv(sd, "volume"),
-            "avgVolume":      rv(sd, "averageVolume", "averageVolume10days"),
-            "marketCap":      rv(pr, "marketCap") or rv(sd, "marketCap"),
-            "trailingPE":     rv(sd, "trailingPE"),
-            "forwardPE":      rv(sd, "forwardPE"),
-            "eps":            rv(ks, "trailingEps"),
-            "beta":           rv(sd, "beta") or rv(ks, "beta"),
-            "dividendYield":  rv(sd, "dividendYield", "trailingAnnualDividendYield"),
-            "priceToBook":    rv(ks, "priceToBook"),
-            "fiftyTwoWeekHigh": rv(sd, "fiftyTwoWeekHigh"),
-            "fiftyTwoWeekLow":  rv(sd, "fiftyTwoWeekLow"),
+            "open":           info.get("open") or info.get("regularMarketOpen"),
+            "volume":         info.get("volume") or info.get("regularMarketVolume"),
+            "avgVolume":      info.get("averageVolume") or info.get("averageDailyVolume10Day"),
+            "marketCap":      info.get("marketCap") or mc,
+            "trailingPE":     info.get("trailingPE"),
+            "forwardPE":      info.get("forwardPE"),
+            "eps":            info.get("trailingEps"),
+            "beta":           info.get("beta"),
+            "dividendYield":  info.get("dividendYield") or info.get("trailingAnnualDividendYield"),
+            "priceToBook":    info.get("priceToBook"),
+            "fiftyTwoWeekHigh": info.get("fiftyTwoWeekHigh"),
+            "fiftyTwoWeekLow":  info.get("fiftyTwoWeekLow"),
         }
+        data = {k: v for k, v in data.items() if v is not None}
     except Exception as e:
         print(f"[FUNDAMENTALS] {symbol}: {e}", flush=True)
         data = {}
@@ -116,9 +75,6 @@ class Handler(SimpleHTTPRequestHandler):
             return
         if parsed.path == "/api/fundamentals":
             self.handle_fundamentals(parsed)
-            return
-        if parsed.path == "/api/quote-summary":
-            self.handle_quote_summary(parsed)
             return
         self.serve_static()
 
@@ -154,30 +110,7 @@ class Handler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def handle_quote_summary(self, parsed):
-        qs = parse_qs(parsed.query)
-        symbol = (qs.get("symbol") or [""])[0]
-        if not symbol:
-            self.send_json_error(400, "missing symbol parameter")
-            return
-        modules = "defaultKeyStatistics,summaryDetail,financialData,price"
-        url = (f"https://query1.finance.yahoo.com/v10/finance/quoteSummary/"
-               f"{urllib.request.quote(symbol)}?modules={urllib.request.quote(modules)}")
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        try:
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                body = resp.read()
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.send_header("Cache-Control", "public, max-age=300")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
-        except urllib.error.HTTPError as e:
-            self.send_json_error(e.code, "upstream error: " + str(e))
-        except Exception as e:
-            self.send_json_error(502, "proxy error: " + str(e))
+
 
     def handle_fundamentals(self, parsed):
         qs = parse_qs(parsed.query)
