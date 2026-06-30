@@ -273,12 +273,13 @@ class Handler(SimpleHTTPRequestHandler):
             message = str(body.get("message", "")).strip()
             phone   = str(body.get("phone",   "")).strip()
             email   = str(body.get("email",   "")).strip().lower()
+            name    = str(body.get("name",    "")).strip()
             ip      = self.get_client_ip()
             if not message:
                 self.send_json_error(400, "missing message")
                 return
             ts = (datetime.datetime.utcnow() + datetime.timedelta(hours=5, minutes=30)).strftime("%Y-%m-%d %H:%M:%S IST")
-            print(f"[FEEDBACK] {ts} | {email} | {phone} | {ip} | {message[:120]}", flush=True)
+            print(f"[FEEDBACK] {ts} | {name} | {email} | {phone} | {ip} | {message[:120]}", flush=True)
 
             if SHEETS_WEBHOOK:
                 params = urlencode({
@@ -286,6 +287,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "message": message,
                     "phone": phone,
                     "email": email,
+                    "name": name,
                     "ip": ip,
                     "timestamp": ts
                 })
