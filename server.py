@@ -68,6 +68,9 @@ class Handler(SimpleHTTPRequestHandler):
         if parsed.path == "/api/fundamentals":
             self.handle_fundamentals(parsed)
             return
+        if parsed.path == "/api/quote-summary":
+            self.handle_quote_summary(parsed)
+            return
         self.serve_static()
 
     def serve_static(self):
@@ -101,6 +104,31 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_header("Content-Encoding", "gzip")
         self.end_headers()
         self.wfile.write(body)
+
+    def handle_quote_summary(self, parsed):
+        qs = parse_qs(parsed.query)
+        symbol = (qs.get("symbol") or [""])[0]
+        if not symbol:
+            self.send_json_error(400, "missing symbol parameter")
+            return
+        modules = "defaultKeyStatistics,summaryDetail,financialData,price"
+        url = (f"https://query1.finance.yahoo.com/v10/finance/quoteSummary/"
+               f"{urllib.request.quote(symbol)}?modules={urllib.request.quote(modules)}")
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                body = resp.read()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Cache-Control", "public, max-age=300")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        except urllib.error.HTTPError as e:
+            self.send_json_error(e.code, "upstream error: " + str(e))
+        except Exception as e:
+            self.send_json_error(502, "proxy error: " + str(e))
 
     def handle_fundamentals(self, parsed):
         qs = parse_qs(parsed.query)

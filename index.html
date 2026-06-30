@@ -1765,9 +1765,29 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
 
   useEffect(() => {
     if (source === "crypto") return;
-    fetch(`${proxyBase}/api/fundamentals?symbol=${encodeURIComponent(symbol)}`)
+    fetch(`${proxyBase}/api/quote-summary?symbol=${encodeURIComponent(symbol)}`)
       .then(r => r.json())
-      .then(data => setFundamentals(data))
+      .then(data => {
+        const qs = data?.quoteSummary?.result?.[0] || {};
+        const sd = qs.summaryDetail || {};
+        const ks = qs.defaultKeyStatistics || {};
+        const fd = qs.financialData || {};
+        const pr = qs.price || {};
+        setFundamentals({
+          open:           sd.open?.raw          ?? sd.regularMarketOpen?.raw,
+          volume:         sd.volume?.raw         ?? pr.regularMarketVolume?.raw,
+          avgVolume:      sd.averageVolume?.raw   ?? sd.averageVolume10days?.raw,
+          marketCap:      pr.marketCap?.raw       ?? sd.marketCap?.raw,
+          trailingPE:     sd.trailingPE?.raw      ?? ks.trailingPE?.raw,
+          forwardPE:      sd.forwardPE?.raw,
+          eps:            ks.trailingEps?.raw,
+          beta:           sd.beta?.raw            ?? ks.beta?.raw,
+          dividendYield:  sd.dividendYield?.raw   ?? sd.trailingAnnualDividendYield?.raw,
+          priceToBook:    ks.priceToBook?.raw,
+          fiftyTwoWeekHigh: sd.fiftyTwoWeekHigh?.raw,
+          fiftyTwoWeekLow:  sd.fiftyTwoWeekLow?.raw,
+        });
+      })
       .catch(() => setFundamentals({}));
   }, [symbol, source]);
 
@@ -1804,8 +1824,8 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
         (changePct >= 0 ? "▲ +" : "▼ ") + Math.abs(changePct || 0).toFixed(2) + "%"
       )
     ),
-    E("div", { style: { flex: 1, overflow: "hidden", padding: 10, display: "grid", gridTemplateColumns: "3fr 2fr", gridTemplateRows: "1fr", gap: 10 } },
-      E("div", { style: { display: "flex", flexDirection: "column", gap: 10, overflow: "hidden" } },
+    E("div", { style: { flex: 1, minHeight: 0, overflow: "hidden", padding: 10, display: "grid", gridTemplateColumns: "3fr 2fr", gridTemplateRows: "1fr", gap: 10, alignItems: "stretch" } },
+      E("div", { style: { display: "flex", flexDirection: "column", gap: 10, overflow: "hidden", minHeight: 0 } },
         E("div", { className: "panel", style: { flexShrink: 0 } },
           E("h2", null, "PRICE CHART"),
           chartLoading
