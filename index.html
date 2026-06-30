@@ -1765,29 +1765,9 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
 
   useEffect(() => {
     if (source === "crypto") return;
-    fetch(`${proxyBase}/api/quote-summary?symbol=${encodeURIComponent(symbol)}`)
+    fetch(`${proxyBase}/api/fundamentals?symbol=${encodeURIComponent(symbol)}`)
       .then(r => r.json())
-      .then(data => {
-        const qs = data?.quoteSummary?.result?.[0] || {};
-        const sd = qs.summaryDetail || {};
-        const ks = qs.defaultKeyStatistics || {};
-        const fd = qs.financialData || {};
-        const pr = qs.price || {};
-        setFundamentals({
-          open:           sd.open?.raw          ?? sd.regularMarketOpen?.raw,
-          volume:         sd.volume?.raw         ?? pr.regularMarketVolume?.raw,
-          avgVolume:      sd.averageVolume?.raw   ?? sd.averageVolume10days?.raw,
-          marketCap:      pr.marketCap?.raw       ?? sd.marketCap?.raw,
-          trailingPE:     sd.trailingPE?.raw      ?? ks.trailingPE?.raw,
-          forwardPE:      sd.forwardPE?.raw,
-          eps:            ks.trailingEps?.raw,
-          beta:           sd.beta?.raw            ?? ks.beta?.raw,
-          dividendYield:  sd.dividendYield?.raw   ?? sd.trailingAnnualDividendYield?.raw,
-          priceToBook:    ks.priceToBook?.raw,
-          fiftyTwoWeekHigh: sd.fiftyTwoWeekHigh?.raw,
-          fiftyTwoWeekLow:  sd.fiftyTwoWeekLow?.raw,
-        });
-      })
+      .then(data => setFundamentals(data))
       .catch(() => setFundamentals({}));
   }, [symbol, source]);
 
