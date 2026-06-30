@@ -531,7 +531,7 @@ const E = React.createElement;
 
 const LOCAL_PROXY_BASE = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
   ? "http://localhost:4173"
-  : "https://api.bloomyco.in";
+  : window.location.origin;
 const COIN_COUNT = 30;
 const INTL_SYMBOLS = [
   { symbol: "^GSPC", label: "S&P 500", isIndex: true },
