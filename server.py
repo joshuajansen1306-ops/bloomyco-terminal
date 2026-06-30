@@ -5,7 +5,7 @@ import datetime
 import urllib.request
 import urllib.error
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, urlencode
 
 try:
     import yfinance as yf
@@ -174,17 +174,11 @@ class Handler(SimpleHTTPRequestHandler):
             ts    = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
             print(f"[REGISTER] {ts} | {name} | {email}", flush=True)
 
-            # Save to Google Sheets via Apps Script webhook (Name, Email ID, Timestamp)
+            # Save to Google Sheets via Apps Script (GET with params — more reliable)
             if SHEETS_WEBHOOK:
-                payload = json.dumps({"name": name, "email": email, "timestamp": ts}).encode()
-                # Google Apps Script redirects POSTs — follow redirect manually
-                opener = urllib.request.build_opener(urllib.request.HTTPRedirectHandler())
-                req = urllib.request.Request(
-                    SHEETS_WEBHOOK, data=payload,
-                    headers={"Content-Type": "application/json"},
-                    method="POST"
-                )
-                opener.open(req, timeout=8)
+                params = urlencode({"name": name, "email": email, "timestamp": ts})
+                url = SHEETS_WEBHOOK + "?" + params
+                urllib.request.urlopen(url, timeout=8)
 
             resp = json.dumps({"ok": True}).encode()
             self.send_response(200)
