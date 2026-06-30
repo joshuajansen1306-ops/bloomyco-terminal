@@ -1827,7 +1827,15 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
 }
 
 function DisclaimerScreen({ onAccept }) {
+  const [canDismiss, setCanDismiss] = useState(false);
+
   React.useEffect(() => {
+    const timer = setTimeout(() => setCanDismiss(true), 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  React.useEffect(() => {
+    if (!canDismiss) return;
     const handle = () => onAccept();
     window.addEventListener("keydown", handle);
     window.addEventListener("pointerdown", handle);
@@ -1835,12 +1843,12 @@ function DisclaimerScreen({ onAccept }) {
       window.removeEventListener("keydown", handle);
       window.removeEventListener("pointerdown", handle);
     };
-  }, [onAccept]);
+  }, [canDismiss, onAccept]);
 
   return E("div", { style: {
     position: "fixed", inset: 0, background: "#000",
     display: "flex", alignItems: "center", justifyContent: "center",
-    fontFamily: "monospace", zIndex: 9999, padding: "20px", cursor: "pointer"
+    fontFamily: "monospace", zIndex: 9999, padding: "20px", cursor: canDismiss ? "pointer" : "default"
   }},
     E(LoginBackground, null),
     E("div", { style: {
@@ -1876,8 +1884,8 @@ function DisclaimerScreen({ onAccept }) {
           "By continuing, you confirm that you have read, understood, and agree to these terms."
         )
       ),
-      E("div", { style: { textAlign: "center", color: "#ff9900", fontSize: 11, letterSpacing: 2, opacity: 0.8, animation: "blink 1.4s step-end infinite" } },
-        "TAP ANYWHERE OR PRESS ANY KEY TO CONTINUE"
+      E("div", { style: { textAlign: "center", color: "#ff9900", fontSize: 11, letterSpacing: 2, opacity: canDismiss ? 0.8 : 0.35, animation: canDismiss ? "blink 1.4s step-end infinite" : "none" } },
+        canDismiss ? "TAP ANYWHERE OR PRESS ANY KEY TO CONTINUE" : "PLEASE READ BEFORE CONTINUING..."
       )
     )
   );
