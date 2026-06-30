@@ -1636,9 +1636,10 @@ function LoginScreen({ onLogin }) {
         body: JSON.stringify({ name: n, email: em })
       });
     } catch (_) {}
-    localStorage.setItem("bloomyco_user", JSON.stringify({ name: n, email: em, ts: Date.now() }));
+    const ts = Date.now();
+    localStorage.setItem("bloomyco_user", JSON.stringify({ name: n, email: em, ts }));
     setLoading(false);
-    onLogin({ name: n, email: em });
+    onLogin({ name: n, email: em, ts });
   };
 
   const handleSecretSubmit = (ev) => {
