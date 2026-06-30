@@ -21,10 +21,14 @@ PORT           = int(os.environ.get("PORT", 4173))
 SHEETS_WEBHOOK = os.environ.get("SHEETS_WEBHOOK", "")
 YAHOO_BASE     = "https://query1.finance.yahoo.com/v8/finance/chart/"
 YAHOO_SEARCH   = "https://query1.finance.yahoo.com/v1/finance/search"
+COINGECKO_BASE = "https://api.coingecko.com/api/v3"
 
 _fundamentals_cache = {}
-CACHE_TTL = 3600       # successful fetches barely change intraday — cache for an hour
-ERROR_CACHE_TTL = 45   # failures (e.g. rate limits) retry much sooner
+CACHE_TTL = 3600
+ERROR_CACHE_TTL = 45
+
+_coingecko_cache = {}
+COINGECKO_TTL = 120  # categories change slowly — cache 2 minutes
 
 def _fetch_fundamentals_once(symbol):
     t = yf.Ticker(symbol)
@@ -93,6 +97,9 @@ class Handler(SimpleHTTPRequestHandler):
         if parsed.path == "/api/fundamentals":
             self.handle_fundamentals(parsed)
             return
+        if parsed.path == "/api/coingecko-categories":
+            self.handle_coingecko_categories()
+            return
         self.serve_static()
 
     def serve_static(self):
@@ -146,6 +153,35 @@ class Handler(SimpleHTTPRequestHandler):
             self.wfile.write(body)
         except Exception as e:
             self.send_json_error(502, "fundamentals error: " + str(e))
+
+    def handle_coingecko_categories(self):
+        now = time.time()
+        if "categories" in _coingecko_cache:
+            ts, body = _coingecko_cache["categories"]
+            if now - ts < COINGECKO_TTL:
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                return
+        url = COINGECKO_BASE + "/coins/categories"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                body = resp.read()
+            _coingecko_cache["categories"] = (now, body)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        except urllib.error.HTTPError as e:
+            self.send_json_error(e.code, "coingecko error: " + str(e))
+        except Exception as e:
+            self.send_json_error(502, "coingecko proxy error: " + str(e))
 
     def handle_yahoo_search(self, parsed):
         qs = parse_qs(parsed.query)

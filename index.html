@@ -2499,7 +2499,7 @@ function App({ onLogout, user }) {
 
   const fetchCategories = useCallback(async () => {
     try {
-      const res = await fetch("https://api.coingecko.com/api/v3/coins/categories");
+      const res = await fetch(`${LOCAL_PROXY_BASE}/api/coingecko-categories`);
       if (res.status === 429) throw new Error("RATE LIMITED BY COINGECKO — TRY AGAIN SHORTLY");
       if (!res.ok) throw new Error("HTTP " + res.status);
       const data = await res.json();
