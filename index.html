@@ -1,0 +1,2774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Bloomyco.in</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+  :root {
+    --bg: #000000;
+    --panel: #0a0a0a;
+    --border: #2a2a2a;
+    --amber: #ff9900;
+    --green: #00ff66;
+    --red: #ff3b3b;
+    --cyan: #00e5ff;
+    --text: #d8d8d8;
+    --dim: #6b6b6b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); }
+  body {
+    font-family: "IBM Plex Mono", "Consolas", "Courier New", monospace;
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  #root { min-height: 100vh; }
+
+  .terminal {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--amber);
+    color: #000;
+    padding: 4px 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    font-size: 12px;
+  }
+  .topbar .clock { font-weight: 700; }
+  .topbar-brand { display: flex; align-items: center; gap: 8px; }
+  .site-logo { height: 22px; width: auto; display: block; }
+
+  .cmdbar {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 6px 10px;
+  }
+  .cmdbar input {
+    flex: 1;
+    background: #000;
+    border: 1px solid var(--border);
+    color: var(--green);
+    font-family: inherit;
+    font-size: 13px;
+    padding: 4px 8px;
+    outline: none;
+  }
+  .cmdbar input::placeholder { color: var(--dim); }
+  .cmdbar .label { color: var(--amber); font-weight: 700; }
+
+  .body {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 280px;
+    grid-template-rows: auto 1fr;
+    gap: 1px;
+    background: var(--border);
+    overflow: hidden;
+  }
+
+  .panel {
+    background: var(--panel);
+    padding: 8px 10px;
+    overflow: auto;
+  }
+  .panel h2 {
+    margin: 0 0 8px 0;
+    font-size: 12px;
+    color: var(--amber);
+    letter-spacing: 1px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 6px;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+  .tab {
+    cursor: pointer;
+    padding: 4px 12px;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--dim);
+    border: 1px solid var(--border);
+  }
+  .tab.active {
+    color: #000;
+    background: var(--amber);
+    border-color: var(--amber);
+    font-weight: 700;
+  }
+
+  .indices-bar {
+    display: flex;
+    gap: 18px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 5px 10px;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .idx-item { font-size: 11px; }
+  .idx-item .idx-label { color: var(--dim); margin-right: 6px; }
+
+  .index-blocks {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .index-card {
+    border: 1px solid var(--border);
+    background: #0e0d08;
+    padding: 8px 10px;
+    cursor: pointer;
+  }
+  .index-card.active {
+    border-color: var(--amber);
+    background: #1a1608;
+  }
+  .index-card .ic-label {
+    color: var(--amber);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .index-card .ic-price {
+    font-size: 18px;
+    font-weight: 700;
+    margin-top: 4px;
+  }
+  .index-card .ic-chg {
+    font-size: 11px;
+    margin-top: 2px;
+  }
+  .india-section-label {
+    color: var(--dim);
+    font-size: 10px;
+    letter-spacing: 1px;
+    margin: 4px 0 6px;
+  }
+
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .sidebar .panel { flex: 1; min-height: 0; }
+
+  .news-list { display: flex; flex-direction: column; gap: 8px; }
+  .news-item {
+    display: block;
+    text-decoration: none;
+    padding: 6px 0;
+    border-bottom: 1px solid #161616;
+  }
+  .news-item:hover .news-title { color: var(--amber); }
+  .news-title { color: var(--text); font-size: 12px; line-height: 1.35; }
+  .news-meta { color: var(--dim); font-size: 10px; margin-top: 3px; letter-spacing: 0.3px; }
+
+  .heatmap-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+  .heat-cell {
+    padding: 8px 6px;
+    font-size: 10px;
+    color: #000;
+    font-weight: 700;
+  }
+  .heat-cell .hc-name { display: block; font-size: 9px; opacity: 0.85; }
+  .heat-cell .hc-chg { display: block; font-size: 12px; margin-top: 2px; }
+
+  .pf-form {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 10px;
+  }
+  .pf-form select, .pf-form input {
+    background: #000;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 11px;
+    padding: 3px 5px;
+  }
+  .pf-form select { flex: 1.4; }
+  .pf-form input { flex: 1; min-width: 0; }
+  .pf-form button {
+    background: var(--amber);
+    color: #000;
+    border: none;
+    font-weight: 700;
+    font-size: 11px;
+    padding: 3px 8px;
+    cursor: pointer;
+  }
+  .pf-list { font-size: 11px; }
+  .pf-list .pf-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #161616; align-items: center; }
+  .pf-list .pf-rm { color: var(--dim); cursor: pointer; margin-left: 6px; }
+  .pf-total { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); font-size: 12px; }
+
+  .acct-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .acct-cell .k { color: var(--dim); font-size: 9px; text-transform: uppercase; }
+  .acct-cell .v { font-size: 13px; font-weight: 700; margin-top: 2px; }
+
+  .trade-form { margin-bottom: 10px; }
+  .trade-asset { font-size: 11px; margin-bottom: 6px; color: var(--dim); }
+  .trade-kind-tabs { display: flex; gap: 2px; margin-bottom: 6px; }
+  .trade-row {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 6px;
+  }
+  .trade-row select, .trade-row input {
+    background: #000;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 11px;
+    padding: 3px 5px;
+    flex: 1;
+    min-width: 0;
+  }
+  .trade-row button {
+    background: var(--amber);
+    color: #000;
+    border: none;
+    font-weight: 700;
+    font-size: 11px;
+    padding: 3px 8px;
+    cursor: pointer;
+    flex: 1.2;
+  }
+  .trade-row button.trade-sell-btn { background: var(--red); color: #fff; }
+  .trade-error { color: var(--red); font-size: 10px; margin-top: 4px; }
+
+  .pos-row { padding: 6px 0; border-bottom: 1px solid #161616; font-size: 11px; }
+  .pos-row-bottom { display: flex; justify-content: flex-end; align-items: center; margin-top: 3px; }
+  .pos-kind {
+    font-size: 9px;
+    font-weight: 700;
+    color: #000;
+    background: var(--dim);
+    padding: 1px 4px;
+  }
+
+  .ticker-tape {
+    grid-column: 1 / -1;
+    background: var(--panel);
+    white-space: nowrap;
+    overflow: hidden;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .ticker-track {
+    display: inline-block;
+    animation: scroll 30s linear infinite;
+  }
+  .ticker-item { display: inline-block; padding: 0 24px; font-size: 13px; }
+  @keyframes scroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left;
+    color: var(--dim);
+    font-weight: 400;
+    font-size: 11px;
+    text-transform: uppercase;
+    padding: 4px 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 5px 6px;
+    border-bottom: 1px solid #161616;
+    font-size: 13px;
+  }
+  tr:hover td { background: #141414; cursor: pointer; }
+  tr.selected td { background: #1a1a1a; }
+
+  .up { color: var(--green); }
+  .down { color: var(--red); }
+  .mono-num { font-variant-numeric: tabular-nums; }
+
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 14px;
+    margin-bottom: 14px;
+  }
+  .detail-grid .k { color: var(--dim); font-size: 11px; text-transform: uppercase; }
+  .detail-grid .v { font-size: 14px; }
+
+  .chart-wrap { margin-top: 10px; }
+  .chart-wrap svg { width: 100%; height: 160px; display: block; }
+
+  .chart-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 4px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .chart-controls-group {
+    display: flex;
+    gap: 2px;
+  }
+  .chart-toggle {
+    cursor: pointer;
+    padding: 3px 8px;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    color: var(--dim);
+    border: 1px solid var(--border);
+  }
+  .chart-toggle.active {
+    color: #000;
+    background: var(--amber);
+    border-color: var(--amber);
+    font-weight: 700;
+  }
+
+  .sentiment-box {
+    margin-top: 16px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+  .sentiment-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px 10px;
+    margin-bottom: 10px;
+  }
+  .sentiment-cell .k { color: var(--dim); font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .sentiment-cell .v { font-size: 13px; margin-top: 2px; font-weight: 700; }
+  .range-bar-wrap { margin: 8px 0 4px; }
+  .range-bar {
+    position: relative;
+    height: 6px;
+    background: linear-gradient(to right, var(--red), var(--dim), var(--green));
+    border-radius: 3px;
+  }
+  .range-bar-fill { display: none; }
+  .range-bar-marker {
+    position: absolute;
+    top: -3px;
+    width: 2px;
+    height: 12px;
+    background: #fff;
+    transform: translateX(-1px);
+  }
+  .range-bar-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+    color: var(--dim);
+    margin-top: 3px;
+  }
+  .sentiment-disclaimer {
+    font-size: 9px;
+    color: var(--dim);
+    margin-top: 8px;
+    font-style: italic;
+  }
+
+  .statusbar {
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    padding: 4px 10px;
+    display: flex;
+    justify-content: space-between;
+    color: var(--dim);
+    font-size: 11px;
+  }
+  .statusbar .ok { color: var(--green); }
+  .statusbar .err { color: var(--red); }
+
+  .price-big { font-size: 26px; font-weight: 700; }
+
+  .empty {
+    color: var(--dim);
+    padding: 20px 0;
+    text-align: center;
+  }
+
+  /* market status badge */
+  .mkt-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 2px 8px;
+    border: 1px solid currentColor;
+    margin-left: 8px;
+  }
+  .mkt-badge.open  { color: var(--green); border-color: var(--green); }
+  .mkt-badge.closed { color: var(--red);   border-color: var(--red); }
+  .mkt-badge.pre   { color: var(--amber);  border-color: var(--amber); }
+  .mkt-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .mkt-badge.closed .mkt-dot { animation: none; }
+
+  /* market summary */
+  .summary-bar {
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    padding: 10px 14px;
+  }
+  .summary-bar h2 { margin: 0 0 8px; font-size: 11px; color: var(--amber); letter-spacing: 1px; }
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px 20px;
+  }
+  .summary-col { border-left: 2px solid var(--border); padding-left: 10px; }
+  .summary-col h3 { margin: 0 0 5px; font-size: 10px; color: var(--dim); letter-spacing: 0.5px; }
+  .summary-stat { font-size: 11px; margin-bottom: 2px; }
+  .summary-text { font-size: 11px; color: var(--dim); margin-top: 6px; line-height: 1.5; border-top: 1px solid var(--border); padding-top: 6px; }
+
+  /* scrollbars */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: #000; }
+  ::-webkit-scrollbar-thumb { background: #2a2a2a; }
+
+  /* CMD bar dropdown */
+  .cmd-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #0e0e0e;
+    border: 1px solid var(--amber);
+    border-top: none;
+    z-index: 1000;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  .cmd-suggestion {
+    padding: 7px 12px;
+    cursor: pointer;
+    font-size: 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .cmd-suggestion:hover { background: #1a1a0a; }
+  .cmd-sug-type {
+    color: #000;
+    background: var(--amber);
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 4px;
+    letter-spacing: 0.5px;
+    min-width: 44px;
+    text-align: center;
+  }
+  .cmd-sug-label { color: var(--cyan); font-weight: 700; min-width: 80px; }
+  .cmd-sug-name { color: var(--dim); font-size: 11px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cmd-hint { color: var(--dim); font-size: 10px; padding: 6px 12px; font-style: italic; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="boot-error" style="display:none; position:fixed; inset:0; background:#000; color:#ff3b3b; font-family: monospace; font-size: 13px; padding: 20px; white-space: pre-wrap; z-index: 9999; overflow:auto;"></div>
+<script>
+  window.addEventListener("error", function (e) {
+    var el = document.getElementById("boot-error");
+    el.style.display = "block";
+    el.textContent += "ERROR: " + (e.message || e) + "\n" + (e.filename ? (e.filename + ":" + e.lineno) : "") + "\n\n";
+  });
+  window.addEventListener("unhandledrejection", function (e) {
+    var el = document.getElementById("boot-error");
+    el.style.display = "block";
+    el.textContent += "UNHANDLED REJECTION: " + (e.reason && e.reason.message ? e.reason.message : e.reason) + "\n\n";
+  });
+</script>
+
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.3.1",
+    "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime",
+    "react/jsx-dev-runtime": "https://esm.sh/react@18.3.1/jsx-dev-runtime",
+    "react-dom/client": "https://esm.sh/react-dom@18.3.1/client"
+  }
+}
+</script>
+
+<script type="module">
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { createRoot } from "react-dom/client";
+
+const E = React.createElement;
+
+const LOCAL_PROXY_BASE = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+  ? "http://localhost:4173"
+  : window.location.origin;
+const COIN_COUNT = 30;
+const INTL_SYMBOLS = [
+  { symbol: "^GSPC", label: "S&P 500", isIndex: true },
+  { symbol: "^DJI", label: "DOW JONES", isIndex: true },
+  { symbol: "^IXIC", label: "NASDAQ", isIndex: true },
+  { symbol: "^FTSE", label: "FTSE 100", isIndex: true },
+  { symbol: "^GDAXI", label: "DAX", isIndex: true },
+  { symbol: "^N225", label: "NIKKEI 225", isIndex: true },
+  { symbol: "^HSI", label: "HANG SENG", isIndex: true },
+  { symbol: "^FCHI", label: "CAC 40", isIndex: true },
+  { symbol: "^STOXX50E", label: "EURO STOXX 50", isIndex: true },
+  { symbol: "AAPL", label: "AAPL", isIndex: false },
+  { symbol: "MSFT", label: "MSFT", isIndex: false },
+  { symbol: "GOOGL", label: "GOOGL", isIndex: false },
+  { symbol: "AMZN", label: "AMZN", isIndex: false },
+  { symbol: "NVDA", label: "NVDA", isIndex: false },
+  { symbol: "META", label: "META", isIndex: false },
+  { symbol: "TSLA", label: "TSLA", isIndex: false },
+  { symbol: "HSBA.L", label: "HSBC", isIndex: false },
+  { symbol: "AZN.L", label: "ASTRAZENECA", isIndex: false },
+  { symbol: "BP.L", label: "BP", isIndex: false },
+  { symbol: "ULVR.L", label: "UNILEVER", isIndex: false },
+  { symbol: "GSK.L", label: "GSK", isIndex: false },
+  { symbol: "ASML.AS", label: "ASML", isIndex: false },
+  { symbol: "SAP.DE", label: "SAP", isIndex: false },
+  { symbol: "MC.PA", label: "LVMH", isIndex: false },
+  { symbol: "OR.PA", label: "L'OREAL", isIndex: false },
+  { symbol: "SAN.PA", label: "SANOFI", isIndex: false },
+  { symbol: "NESN.SW", label: "NESTLE", isIndex: false },
+  { symbol: "RHHBY", label: "ROCHE", isIndex: false },
+  { symbol: "DTE.DE", label: "DEUTSCHE TELEKOM", isIndex: false },
+  { symbol: "7203.T", label: "TOYOTA", isIndex: false },
+  { symbol: "6758.T", label: "SONY", isIndex: false },
+  { symbol: "005930.KS", label: "SAMSUNG ELEC", isIndex: false },
+  { symbol: "000660.KS", label: "SK HYNIX", isIndex: false },
+  { symbol: "0700.HK", label: "TENCENT", isIndex: false },
+  { symbol: "TSM", label: "TSMC", isIndex: false },
+  { symbol: "BABA", label: "ALIBABA", isIndex: false },
+  { symbol: "BHP.AX", label: "BHP GROUP", isIndex: false },
+  { symbol: "RY.TO", label: "ROYAL BANK OF CANADA", isIndex: false },
+  { symbol: "TD.TO", label: "TD BANK", isIndex: false }
+];
+
+const INDIA_SYMBOLS = [
+  { symbol: "^NSEI", label: "NIFTY 50", isIndex: true },
+  { symbol: "^BSESN", label: "SENSEX", isIndex: true },
+  { symbol: "^NSEBANK", label: "BANK NIFTY", isIndex: true },
+  { symbol: "RELIANCE.NS", label: "RELIANCE", isIndex: false },
+  { symbol: "TCS.NS", label: "TCS", isIndex: false },
+  { symbol: "HDFCBANK.NS", label: "HDFCBANK", isIndex: false },
+  { symbol: "ICICIBANK.NS", label: "ICICIBANK", isIndex: false },
+  { symbol: "INFY.NS", label: "INFY", isIndex: false },
+  { symbol: "HINDUNILVR.NS", label: "HINDUNILVR", isIndex: false },
+  { symbol: "ITC.NS", label: "ITC", isIndex: false },
+  { symbol: "SBIN.NS", label: "SBIN", isIndex: false },
+  { symbol: "BHARTIARTL.NS", label: "BHARTIARTL", isIndex: false },
+  { symbol: "LT.NS", label: "LT", isIndex: false },
+  { symbol: "KOTAKBANK.NS", label: "KOTAKBANK", isIndex: false },
+  { symbol: "AXISBANK.NS", label: "AXISBANK", isIndex: false },
+  { symbol: "BAJFINANCE.NS", label: "BAJFINANCE", isIndex: false },
+  { symbol: "ASIANPAINT.NS", label: "ASIANPAINT", isIndex: false },
+  { symbol: "MARUTI.NS", label: "MARUTI", isIndex: false },
+  { symbol: "SUNPHARMA.NS", label: "SUNPHARMA", isIndex: false },
+  { symbol: "TITAN.NS", label: "TITAN", isIndex: false },
+  { symbol: "ULTRACEMCO.NS", label: "ULTRACEMCO", isIndex: false },
+  { symbol: "NESTLEIND.NS", label: "NESTLEIND", isIndex: false },
+  { symbol: "WIPRO.NS", label: "WIPRO", isIndex: false },
+  { symbol: "ADANIENT.NS", label: "ADANIENT", isIndex: false },
+  { symbol: "ADANIPORTS.NS", label: "ADANIPORTS", isIndex: false },
+  { symbol: "ONGC.NS", label: "ONGC", isIndex: false },
+  { symbol: "NTPC.NS", label: "NTPC", isIndex: false },
+  { symbol: "POWERGRID.NS", label: "POWERGRID", isIndex: false },
+  { symbol: "TATAMOTORS.NS", label: "TATAMOTORS", isIndex: false },
+  { symbol: "TATASTEEL.NS", label: "TATASTEEL", isIndex: false },
+  { symbol: "HCLTECH.NS", label: "HCLTECH", isIndex: false },
+  { symbol: "BAJAJFINSV.NS", label: "BAJAJFINSV", isIndex: false },
+  { symbol: "JSWSTEEL.NS", label: "JSWSTEEL", isIndex: false }
+];
+
+function fmtInr(n, decimals) {
+  if (n === undefined || n === null) return "--";
+  const d = decimals !== undefined ? decimals : 2;
+  return n.toLocaleString("en-IN", { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+
+function fmtUsd(n, decimals) {
+  if (n === undefined || n === null) return "--";
+  const d = decimals !== undefined ? decimals : (n < 1 ? 4 : 2);
+  return n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+
+function fmtCcy(n, currency) {
+  if (n === undefined || n === null) return "--";
+  const num = n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return currency ? currency + " " + num : num;
+}
+
+function extractYahooOhlc(chartJson) {
+  const result = chartJson.chart && chartJson.chart.result && chartJson.chart.result[0];
+  const q = result && result.indicators && result.indicators.quote && result.indicators.quote[0];
+  if (!q) return [];
+  const n = (q.close || []).length;
+  const ohlc = [];
+  for (let i = 0; i < n; i++) {
+    const o = q.open && q.open[i], h = q.high && q.high[i], l = q.low && q.low[i], c = q.close && q.close[i];
+    if (o === null || o === undefined || h === null || h === undefined ||
+        l === null || l === undefined || c === null || c === undefined) continue;
+    ohlc.push({ open: o, high: h, low: l, close: c });
+  }
+  return ohlc;
+}
+
+function timeAgo(unixSeconds) {
+  const diffMs = Date.now() - unixSeconds * 1000;
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return mins + "m ago";
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return hours + "h ago";
+  const days = Math.floor(hours / 24);
+  return days + "d ago";
+}
+
+function fmtCompact(n) {
+  if (n === undefined || n === null) return "--";
+  if (n >= 1e12) return (n / 1e12).toFixed(2) + "T";
+  if (n >= 1e9) return (n / 1e9).toFixed(2) + "B";
+  if (n >= 1e6) return (n / 1e6).toFixed(2) + "M";
+  return n.toLocaleString("en-US");
+}
+
+function Clock() {
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  return E("span", { className: "clock" }, now.toUTCString().slice(0, 25) + " UTC");
+}
+
+const TIMEFRAMES = [
+  { key: "5m", label: "5M" },
+  { key: "30m", label: "30M" },
+  { key: "1d", label: "1D" },
+  { key: "1w", label: "1W" },
+  { key: "1mo", label: "1M" }
+];
+
+const YAHOO_RANGE_MAP = {
+  "5m": { range: "1d", interval: "5m" },
+  "30m": { range: "5d", interval: "30m" },
+  "1d": { range: "1mo", interval: "1d" },
+  "1w": { range: "6mo", interval: "1wk" },
+  "1mo": { range: "5y", interval: "1mo" }
+};
+
+const COINGECKO_DAYS_MAP = {
+  "5m": 1,
+  "30m": 1,
+  "1d": 30,
+  "1w": 90,
+  "1mo": 365
+};
+
+function ChartControls({ chartType, setChartType, range, setRange }) {
+  return E("div", { className: "chart-controls" },
+    E("div", { className: "chart-controls-group" },
+      E("span", {
+        className: "chart-toggle" + (chartType === "candles" ? " active" : ""),
+        onClick: () => setChartType("candles")
+      }, "CANDLES"),
+      E("span", {
+        className: "chart-toggle" + (chartType === "line" ? " active" : ""),
+        onClick: () => setChartType("line")
+      }, "LINE")
+    ),
+    E("div", { className: "chart-controls-group" },
+      TIMEFRAMES.map((tf) =>
+        E("span", {
+          key: tf.key,
+          className: "chart-toggle" + (range === tf.key ? " active" : ""),
+          onClick: () => setRange(tf.key)
+        }, tf.label)
+      )
+    )
+  );
+}
+
+function Candlestick({ ohlc }) {
+  if (!ohlc || ohlc.length < 2) {
+    return E("div", { className: "empty" }, "NO CHART DATA");
+  }
+  const w = 600, h = 160, pad = 4;
+  const highs = ohlc.map((c) => c.high);
+  const lows = ohlc.map((c) => c.low);
+  const min = Math.min(...lows);
+  const max = Math.max(...highs);
+  const range = max - min || 1;
+  const n = ohlc.length;
+  const slot = (w - pad * 2) / n;
+  const candleW = Math.max(1, slot * 0.6);
+  const y = (v) => h - pad - ((v - min) / range) * (h - pad * 2);
+  const candles = ohlc.map((c, i) => {
+    const x = pad + i * slot + slot / 2;
+    const up = c.close >= c.open;
+    const color = up ? "var(--green)" : "var(--red)";
+    const bodyTop = y(Math.max(c.open, c.close));
+    const bodyBottom = y(Math.min(c.open, c.close));
+    const bodyHeight = Math.max(1, bodyBottom - bodyTop);
+    return E("g", { key: i },
+      E("line", { x1: x, x2: x, y1: y(c.high), y2: y(c.low), stroke: color, strokeWidth: "1" }),
+      E("rect", { x: x - candleW / 2, y: bodyTop, width: candleW, height: bodyHeight, fill: color })
+    );
+  });
+  return E("svg", { viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: "none" }, candles);
+}
+
+function Chart({ chartType, ohlc }) {
+  if (chartType === "candles") {
+    return E(Candlestick, { ohlc });
+  }
+  const points = ohlc ? ohlc.map((c) => c.close) : null;
+  return E(Sparkline, { points });
+}
+
+function computeSentiment({ price, fiftyTwoWeekHigh, fiftyTwoWeekLow, ohlc }) {
+  let trendPct = null;
+  let volatilityLabel = null;
+  let dailyVolPct = null;
+  if (ohlc && ohlc.length >= 2) {
+    const first = ohlc[0].close;
+    const last = ohlc[ohlc.length - 1].close;
+    if (first) trendPct = ((last - first) / first) * 100;
+
+    const dailyMoves = [];
+    for (let i = 1; i < ohlc.length; i++) {
+      const prev = ohlc[i - 1].close;
+      if (prev) dailyMoves.push(((ohlc[i].close - prev) / prev) * 100);
+    }
+    if (dailyMoves.length > 0) {
+      const mean = dailyMoves.reduce((a, b) => a + b, 0) / dailyMoves.length;
+      const variance = dailyMoves.reduce((a, b) => a + (b - mean) * (b - mean), 0) / dailyMoves.length;
+      const stdev = Math.sqrt(variance);
+      dailyVolPct = stdev;
+      volatilityLabel = stdev < 1 ? "LOW" : stdev < 3 ? "MODERATE" : "HIGH";
+    }
+  }
+
+  let rangePosition = null;
+  if (
+    price !== undefined && price !== null &&
+    fiftyTwoWeekHigh !== undefined && fiftyTwoWeekHigh !== null &&
+    fiftyTwoWeekLow !== undefined && fiftyTwoWeekLow !== null &&
+    fiftyTwoWeekHigh !== fiftyTwoWeekLow
+  ) {
+    rangePosition = ((price - fiftyTwoWeekLow) / (fiftyTwoWeekHigh - fiftyTwoWeekLow)) * 100;
+  }
+
+  let momentumLabel = "NEUTRAL";
+  if (trendPct !== null) {
+    momentumLabel = trendPct > 2 ? "BULLISH" : trendPct < -2 ? "BEARISH" : "NEUTRAL";
+  }
+
+  return { trendPct, volatilityLabel, dailyVolPct, rangePosition, momentumLabel };
+}
+
+function normCdf(x) {
+  const t = 1 / (1 + 0.2316419 * Math.abs(x));
+  const d = 0.3989423 * Math.exp((-x * x) / 2);
+  let p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+  if (x >= 0) p = 1 - p;
+  return p;
+}
+
+function bsPrice(S, K, T, sigma, r, type) {
+  if (T <= 0 || sigma <= 0 || S <= 0 || K <= 0) {
+    return type === "CALL" ? Math.max(S - K, 0) : Math.max(K - S, 0);
+  }
+  const d1 = (Math.log(S / K) + (r + (sigma * sigma) / 2) * T) / (sigma * Math.sqrt(T));
+  const d2 = d1 - sigma * Math.sqrt(T);
+  if (type === "CALL") {
+    return S * normCdf(d1) - K * Math.exp(-r * T) * normCdf(d2);
+  }
+  return K * Math.exp(-r * T) * normCdf(-d2) - S * normCdf(-d1);
+}
+
+const RISK_FREE_RATE = 0.05;
+const FX_TO_INR_SYMBOLS = {
+  USD: "USDINR=X", GBP: "GBPINR=X", EUR: "EURINR=X", JPY: "JPYINR=X",
+  KRW: "KRWINR=X", HKD: "HKDINR=X", AUD: "AUDINR=X", CAD: "CADINR=X", CHF: "CHFINR=X"
+};
+
+const SECTOR_CATEGORY_IDS = [
+  "decentralized-finance-defi",
+  "layer-1",
+  "layer-2",
+  "meme-token",
+  "artificial-intelligence",
+  "gaming",
+  "decentralized-exchange",
+  "centralized-exchange-token-cex",
+  "real-world-assets-rwa",
+  "metaverse",
+  "privacy-coins",
+  "stablecoins"
+];
+
+function fxToInr(currency, fxRates) {
+  if (!currency || currency === "INR") return 1;
+  if (currency === "GBp") return (fxRates.GBP || 0) / 100;
+  return fxRates[currency] || null;
+}
+
+function MarketSentiment({ price, fiftyTwoWeekHigh, fiftyTwoWeekLow, ohlc, rangeLabel, lowLabel, highLabel }) {
+  const s = computeSentiment({ price, fiftyTwoWeekHigh, fiftyTwoWeekLow, ohlc });
+  const hasAny = s.trendPct !== null || s.rangePosition !== null || s.volatilityLabel;
+  if (!hasAny) {
+    return E("div", { className: "empty" }, "NOT ENOUGH DATA FOR SENTIMENT SNAPSHOT");
+  }
+  const momentumClass = s.momentumLabel === "BULLISH" ? "up" : s.momentumLabel === "BEARISH" ? "down" : "";
+  return E("div", { className: "sentiment-box" },
+    E("div", { className: "sentiment-grid" },
+      E("div", { className: "sentiment-cell" },
+        E("div", { className: "k" }, "MOMENTUM"),
+        E("div", { className: "v " + momentumClass }, s.momentumLabel)
+      ),
+      E("div", { className: "sentiment-cell" },
+        E("div", { className: "k" }, "PERIOD TREND"),
+        s.trendPct !== null
+          ? E("div", { className: "v mono-num " + (s.trendPct >= 0 ? "up" : "down") },
+              (s.trendPct >= 0 ? "+" : "") + s.trendPct.toFixed(2) + "%"
+            )
+          : E("div", { className: "v empty" }, "--")
+      ),
+      E("div", { className: "sentiment-cell" },
+        E("div", { className: "k" }, "VOLATILITY"),
+        E("div", { className: "v" }, s.volatilityLabel || "--")
+      ),
+      E("div", { className: "sentiment-cell" },
+        E("div", { className: "k" }, rangeLabel || "52W RANGE POSITION"),
+        s.rangePosition !== null
+          ? E("div", { className: "v mono-num" }, s.rangePosition.toFixed(0) + "%")
+          : E("div", { className: "v empty" }, "--")
+      )
+    ),
+    s.rangePosition !== null
+      ? E("div", { className: "range-bar-wrap" },
+          E("div", { className: "range-bar" },
+            E("div", { className: "range-bar-fill", style: { width: Math.max(0, Math.min(100, s.rangePosition)) + "%" } }),
+            E("div", { className: "range-bar-marker", style: { left: Math.max(0, Math.min(100, s.rangePosition)) + "%" } })
+          ),
+          E("div", { className: "range-bar-labels" },
+            E("span", null, lowLabel || "52W LOW"),
+            E("span", null, highLabel || "52W HIGH")
+          )
+        )
+      : null,
+    E("div", { className: "sentiment-disclaimer" }, "Computed from price/volatility data only — not investment advice.")
+  );
+}
+
+function FundamentalsGrid({ d, fundamentals, currency, isInr }) {
+  const f = fundamentals || {};
+  const fmt = (n) => isInr ? (n != null ? "₹" + fmtInr(n) : "--") : fmtCcy(n, currency);
+  const price = d.price;
+  const w52High = f.fiftyTwoWeekHigh || d.fiftyTwoWeekHigh;
+  const w52Low  = f.fiftyTwoWeekLow  || d.fiftyTwoWeekLow;
+  const open    = f.open    || d.open;
+  const volume  = f.volume  != null ? f.volume  : d.volume;
+  const avgVol  = f.avgVolume != null ? f.avgVolume : d.avgVolume;
+  const mktCap  = f.marketCap != null ? f.marketCap : d.marketCap;
+  const pe      = f.trailingPE != null ? f.trailingPE : d.trailingPE;
+  const fwdPE   = f.forwardPE;
+  const eps     = f.eps != null ? f.eps : d.eps;
+  const beta    = f.beta;
+  const divYield= f.dividendYield;
+  const pb      = f.priceToBook;
+  const pctFromHigh = (price != null && w52High) ? ((price - w52High) / w52High) * 100 : null;
+  const pctFromLow  = (price != null && w52Low)  ? ((price - w52Low)  / w52Low)  * 100 : null;
+  const ccyPrefix = isInr ? "₹" : (currency ? currency + " " : "$");
+  const rows = [
+    { k: "OPEN",            v: fmt(open) },
+    { k: "52W HIGH",        v: fmt(w52High) },
+    { k: "52W LOW",         v: fmt(w52Low) },
+    { k: "% FROM 52W HIGH", v: pctFromHigh != null ? E("span", { className: pctFromHigh >= 0 ? "up" : "down" }, (pctFromHigh >= 0 ? "+" : "") + pctFromHigh.toFixed(2) + "%") : "--" },
+    { k: "% FROM 52W LOW",  v: pctFromLow  != null ? E("span", { className: pctFromLow  >= 0 ? "up" : "down" }, "+" + pctFromLow.toFixed(2)  + "%") : "--" },
+    { k: "VOLUME",          v: volume  != null ? fmtCompact(volume)  : "--" },
+    { k: "AVG VOL 3M",      v: avgVol  != null ? fmtCompact(avgVol)  : "--" },
+    { k: "MARKET CAP",      v: mktCap  != null ? ccyPrefix + fmtCompact(mktCap) : "--" },
+    { k: "P/E (TTM)",       v: pe      != null ? pe.toFixed(2)        : "--" },
+    { k: "P/E (FWD)",       v: fwdPE   != null ? fwdPE.toFixed(2)     : "--" },
+    { k: "EPS (TTM)",       v: eps     != null ? fmt(eps)             : "--" },
+    { k: "BETA",            v: beta    != null ? beta.toFixed(2)       : "--" },
+    { k: "DIV YIELD",       v: divYield!= null ? divYield.toFixed(2) + "%" : "--" },
+    { k: "PRICE/BOOK",      v: pb      != null ? pb.toFixed(2)         : "--" },
+  ];
+  return E("div", { style: { marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border)" } },
+    E("div", { style: { color: "var(--amber)", fontSize: 11, fontWeight: 700, letterSpacing: 1, marginBottom: 8 } },
+      "FUNDAMENTALS", fundamentals ? null : E("span", { style: { color: "var(--dim)", fontWeight: 400, marginLeft: 8 } }, "LOADING...")
+    ),
+    E("div", { className: "detail-grid", style: { gridTemplateColumns: "1fr 1fr", gap: "6px 14px" } },
+      rows.map((r, i) =>
+        E("div", { key: i },
+          E("div", { className: "k" }, r.k),
+          E("div", { className: "v mono-num", style: { fontSize: 13 } }, r.v)
+        )
+      )
+    )
+  );
+}
+
+function Sparkline({ points }) {
+  if (!points || points.length < 2) {
+    return E("div", { className: "empty" }, "NO CHART DATA");
+  }
+  const w = 600, h = 150, pad = 4;
+  const min = Math.min(...points);
+  const max = Math.max(...points);
+  const range = max - min || 1;
+  const stepX = (w - pad * 2) / (points.length - 1);
+  const coords = points.map((p, i) => {
+    const x = pad + i * stepX;
+    const y = h - pad - ((p - min) / range) * (h - pad * 2);
+    return [x, y];
+  });
+  const d = coords.map((c, i) => (i === 0 ? "M" : "L") + c[0].toFixed(1) + "," + c[1].toFixed(1)).join(" ");
+  const last = points[points.length - 1];
+  const first = points[0];
+  const color = last >= first ? "var(--green)" : "var(--red)";
+  const areaD = d + ` L${coords[coords.length - 1][0].toFixed(1)},${h} L${coords[0][0].toFixed(1)},${h} Z`;
+  return E(
+    "svg",
+    { viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: "none" },
+    E("path", { d: areaD, fill: color, opacity: "0.08", stroke: "none" }),
+    E("path", { d: d, fill: "none", stroke: color, strokeWidth: "1.5" })
+  );
+}
+
+function fmtCountdown(secs) {
+  if (secs == null || secs <= 0) return null;
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = Math.floor(secs % 60);
+  if (h > 0) return h + "h " + m + "m";
+  if (m > 0) return m + "m " + s + "s";
+  return s + "s";
+}
+
+function MarketBadge({ status }) {
+  const [now, setNow] = useState(Math.floor(Date.now() / 1000));
+  useEffect(() => {
+    const t = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
+    return () => clearInterval(t);
+  }, []);
+  if (!status) return null;
+  const cls = status.open ? "open" : status.pre ? "pre" : "closed";
+  const label = status.open ? "LIVE" : status.pre ? "PRE-MKT" : "CLOSED";
+  const countdown = status.open
+    ? fmtCountdown(status.closeAt - now)
+    : fmtCountdown(status.openAt - now);
+  const countdownLabel = status.open && countdown
+    ? " · closes in " + countdown
+    : !status.open && countdown
+      ? " · opens in " + countdown
+      : null;
+  return E("span", { className: "mkt-badge " + cls },
+    E("span", { className: "mkt-dot" }),
+    label + (status.exchange ? " · " + status.exchange : ""),
+    countdownLabel
+  );
+}
+
+function MarketSummaryBar({ india, stocks, coins, global }) {
+  const indiaStocks = india.filter(s => !s.isIndex && !s.error && s.changePct != null);
+  const intlStocks  = stocks.filter(s => !s.isIndex && !s.error && s.changePct != null);
+  const indiaIndices = india.filter(s => s.isIndex && !s.error && s.changePct != null);
+  const intlIndices  = stocks.filter(s => s.isIndex && !s.error && s.changePct != null);
+
+  const summarise = (list) => {
+    if (!list.length) return null;
+    const gainers = list.filter(s => s.changePct > 0).length;
+    const losers  = list.filter(s => s.changePct < 0).length;
+    const best  = list.reduce((a, b) => b.changePct > a.changePct ? b : a, list[0]);
+    const worst = list.reduce((a, b) => b.changePct < a.changePct ? b : a, list[0]);
+    const mood = gainers > losers * 1.5 ? "BULLISH" : losers > gainers * 1.5 ? "BEARISH" : "MIXED";
+    return { gainers, losers, best, worst, mood, total: list.length };
+  };
+
+  const indiaSummary = summarise(indiaStocks);
+  const intlSummary  = summarise(intlStocks);
+  const cryptoList   = coins.filter(c => c.price_change_percentage_24h != null);
+  const cryptoUp     = cryptoList.filter(c => c.price_change_percentage_24h > 0).length;
+  const btc          = coins.find(c => c.id === "bitcoin");
+  const eth          = coins.find(c => c.id === "ethereum");
+
+  const moodColor = (mood) => mood === "BULLISH" ? "var(--green)" : mood === "BEARISH" ? "var(--red)" : "var(--amber)";
+
+  const buildNarrative = () => {
+    const parts = [];
+    if (indiaSummary) {
+      parts.push(`Indian markets are ${indiaSummary.mood.toLowerCase()} — ${indiaSummary.gainers}/${indiaSummary.total} stocks advancing. Best: ${indiaSummary.best.label} (${indiaSummary.best.changePct >= 0 ? "+" : ""}${indiaSummary.best.changePct.toFixed(2)}%), Worst: ${indiaSummary.worst.label} (${indiaSummary.worst.changePct.toFixed(2)}%).`);
+    }
+    if (intlSummary) {
+      parts.push(`Global equities ${intlSummary.mood.toLowerCase()} — ${intlSummary.gainers}/${intlSummary.total} names higher. Top: ${intlSummary.best.label} (${intlSummary.best.changePct >= 0 ? "+" : ""}${intlSummary.best.changePct.toFixed(2)}%).`);
+    }
+    const nifty = indiaIndices.find(s => s.label === "NIFTY 50");
+    const sp500 = intlIndices.find(s => s.label === "S&P 500");
+    if (nifty) parts.push(`Nifty 50 ${nifty.changePct >= 0 ? "▲" : "▼"} ${Math.abs(nifty.changePct).toFixed(2)}%.`);
+    if (sp500) parts.push(`S&P 500 ${sp500.changePct >= 0 ? "▲" : "▼"} ${Math.abs(sp500.changePct).toFixed(2)}%.`);
+    if (btc) parts.push(`BTC ${btc.price_change_percentage_24h >= 0 ? "▲" : "▼"} ${Math.abs(btc.price_change_percentage_24h).toFixed(2)}% to $${fmtUsd(btc.current_price)}.`);
+    return parts.join("  ·  ");
+  };
+
+  const narrative = buildNarrative();
+
+  return E("div", { className: "summary-bar" },
+    E("h2", null, "TODAY'S MARKET SUMMARY"),
+    E("div", { className: "summary-grid" },
+      E("div", { className: "summary-col" },
+        E("h3", null, "INDIA EQUITIES"),
+        indiaSummary
+          ? E("div", null,
+              E("div", { className: "summary-stat", style: { color: moodColor(indiaSummary.mood), fontWeight: 700 } }, indiaSummary.mood),
+              E("div", { className: "summary-stat up" }, "▲ " + indiaSummary.gainers + " advancing"),
+              E("div", { className: "summary-stat down" }, "▼ " + indiaSummary.losers + " declining"),
+              E("div", { className: "summary-stat", style: { marginTop: 4 } },
+                E("span", { className: "up" }, "TOP: " + indiaSummary.best.label + " +" + indiaSummary.best.changePct.toFixed(2) + "%")
+              ),
+              E("div", { className: "summary-stat" },
+                E("span", { className: "down" }, "BOTTOM: " + indiaSummary.worst.label + " " + indiaSummary.worst.changePct.toFixed(2) + "%")
+              )
+            )
+          : E("div", { className: "summary-stat", style: { color: "var(--dim)" } }, "Loading...")
+      ),
+      E("div", { className: "summary-col" },
+        E("h3", null, "GLOBAL EQUITIES"),
+        intlSummary
+          ? E("div", null,
+              E("div", { className: "summary-stat", style: { color: moodColor(intlSummary.mood), fontWeight: 700 } }, intlSummary.mood),
+              E("div", { className: "summary-stat up" }, "▲ " + intlSummary.gainers + " advancing"),
+              E("div", { className: "summary-stat down" }, "▼ " + intlSummary.losers + " declining"),
+              E("div", { className: "summary-stat", style: { marginTop: 4 } },
+                E("span", { className: "up" }, "TOP: " + intlSummary.best.label + " +" + intlSummary.best.changePct.toFixed(2) + "%")
+              ),
+              E("div", { className: "summary-stat" },
+                E("span", { className: "down" }, "BOTTOM: " + intlSummary.worst.label + " " + intlSummary.worst.changePct.toFixed(2) + "%")
+              )
+            )
+          : E("div", { className: "summary-stat", style: { color: "var(--dim)" } }, "Loading...")
+      ),
+      E("div", { className: "summary-col" },
+        E("h3", null, "KEY INDICES"),
+        E("div", null,
+          indiaIndices.concat(intlIndices).slice(0, 6).map((s, i) =>
+            E("div", { key: i, className: "summary-stat" },
+              E("span", { style: { color: "var(--dim)", marginRight: 6, fontSize: 10 } }, s.label),
+              E("span", { className: s.changePct >= 0 ? "up" : "down" },
+                (s.changePct >= 0 ? "▲ +" : "▼ ") + (s.changePct || 0).toFixed(2) + "%"
+              )
+            )
+          )
+        )
+      ),
+      E("div", { className: "summary-col" },
+        E("h3", null, "CRYPTO"),
+        E("div", null,
+          btc ? E("div", { className: "summary-stat" },
+            E("span", { style: { color: "var(--dim)", marginRight: 6, fontSize: 10 } }, "BTC"),
+            E("span", { className: btc.price_change_percentage_24h >= 0 ? "up" : "down" },
+              "$" + fmtUsd(btc.current_price) + " " + (btc.price_change_percentage_24h >= 0 ? "▲ +" : "▼ ") + Math.abs(btc.price_change_percentage_24h).toFixed(2) + "%"
+            )
+          ) : null,
+          eth ? E("div", { className: "summary-stat" },
+            E("span", { style: { color: "var(--dim)", marginRight: 6, fontSize: 10 } }, "ETH"),
+            E("span", { className: eth.price_change_percentage_24h >= 0 ? "up" : "down" },
+              "$" + fmtUsd(eth.current_price) + " " + (eth.price_change_percentage_24h >= 0 ? "▲ +" : "▼ ") + Math.abs(eth.price_change_percentage_24h).toFixed(2) + "%"
+            )
+          ) : null,
+          global ? E("div", { className: "summary-stat", style: { marginTop: 4 } },
+            E("span", { style: { color: "var(--dim)", fontSize: 10 } }, "MKT CAP CHG 24H "),
+            E("span", { className: global.market_cap_change_percentage_24h_usd >= 0 ? "up" : "down" },
+              (global.market_cap_change_percentage_24h_usd >= 0 ? "▲ +" : "▼ ") + (global.market_cap_change_percentage_24h_usd || 0).toFixed(2) + "%"
+            )
+          ) : null,
+          E("div", { className: "summary-stat", style: { marginTop: 4 } },
+            E("span", { style: { color: "var(--dim)", fontSize: 10 } }, "ADVANCING "),
+            E("span", { className: "up" }, cryptoUp + "/" + cryptoList.length)
+          )
+        )
+      )
+    ),
+    narrative ? E("div", { className: "summary-text" }, narrative) : null
+  );
+}
+
+function App() {
+  const [tab, setTab] = useState("india");
+  const [coins, setCoins] = useState([]);
+  const [selected, setSelected] = useState("bitcoin");
+  const [chartData, setChartData] = useState(null);
+  const [chartError, setChartError] = useState(null);
+  const [chartType, setChartType] = useState("candles");
+  const [chartRange, setChartRange] = useState("1d");
+  const [error, setError] = useState(null);
+  const [lastUpdate, setLastUpdate] = useState(null);
+  const [filter, setFilter] = useState("");
+  const [cmdInput, setCmdInput] = useState("");
+  const [cmdSuggestions, setCmdSuggestions] = useState([]);
+  const [cmdDropdownOpen, setCmdDropdownOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const [stocks, setStocks] = useState([]);
+  const [selectedStock, setSelectedStock] = useState("AAPL");
+  const [stocksError, setStocksError] = useState(null);
+  const [stocksLastUpdate, setStocksLastUpdate] = useState(null);
+  const [stocksLoading, setStocksLoading] = useState(true);
+  const [stocksChartData, setStocksChartData] = useState(null);
+
+  const [india, setIndia] = useState([]);
+  const [selectedIndia, setSelectedIndia] = useState("^NSEI");
+  const [indiaError, setIndiaError] = useState(null);
+  const [indiaLastUpdate, setIndiaLastUpdate] = useState(null);
+  const [indiaLoading, setIndiaLoading] = useState(true);
+  const [indiaChartData, setIndiaChartData] = useState(null);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState(null);
+  const [selectedSearchResult, setSelectedSearchResult] = useState(null);
+  const [searchQuote, setSearchQuote] = useState(null);
+  const [searchQuoteError, setSearchQuoteError] = useState(null);
+  const [searchChartData, setSearchChartData] = useState(null);
+
+  const [global, setGlobal] = useState(null);
+  const [news, setNews] = useState([]);
+  const [newsLoading, setNewsLoading] = useState(true);
+  const [newsError, setNewsError] = useState(null);
+  const [newsLastFetch, setNewsLastFetch] = useState(null);
+  const [fundamentals, setFundamentals] = useState(null);
+  const [marketStatus, setMarketStatus] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState(null);
+
+  const STARTING_CASH_INR = 130000;
+  const [cashInr, setCashInr] = useState(() => {
+    try {
+      const saved = localStorage.getItem("jj_cash_inr");
+      return saved !== null ? JSON.parse(saved) : STARTING_CASH_INR;
+    } catch (e) {
+      return STARTING_CASH_INR;
+    }
+  });
+  const [positions, setPositions] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("jj_positions") || "[]");
+    } catch (e) {
+      return [];
+    }
+  });
+  const [fxRates, setFxRates] = useState({});
+  const [tradeKind, setTradeKind] = useState("SPOT");
+  const [tradeSide, setTradeSide] = useState("LONG");
+  const [tradeQty, setTradeQty] = useState("");
+  const [tradeLeverage, setTradeLeverage] = useState(1);
+  const [tradeOptionType, setTradeOptionType] = useState("CALL");
+  const [tradeStrike, setTradeStrike] = useState("");
+  const [tradeExpiryDays, setTradeExpiryDays] = useState(30);
+  const [tradeError, setTradeError] = useState(null);
+
+  const fetchMarkets = useCallback(async () => {
+    try {
+      const res = await fetch(
+        `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${COIN_COUNT}&sparkline=true&price_change_percentage=24h`
+      );
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      setCoins(data);
+      setError(null);
+      setLastUpdate(new Date());
+    } catch (e) {
+      setError(e.message || "fetch failed");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchChart = useCallback(async (id, range) => {
+    try {
+      const days = COINGECKO_DAYS_MAP[range] || 30;
+      const res = await fetch(
+        `https://api.coingecko.com/api/v3/coins/${id}/ohlc?vs_currency=usd&days=${days}`
+      );
+      if (res.status === 429) throw new Error("RATE LIMITED BY COINGECKO — TRY AGAIN IN A MOMENT");
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      const ohlc = (data || []).map((c) => ({ time: c[0], open: c[1], high: c[2], low: c[3], close: c[4] }));
+      setChartData(ohlc.length > 1 ? ohlc : null);
+      setChartError(null);
+    } catch (e) {
+      setChartData(null);
+      setChartError(e.message || "chart fetch failed");
+    }
+  }, []);
+
+  const fetchStocks = useCallback(async () => {
+    try {
+      const results = await Promise.all(
+        INTL_SYMBOLS.map((s) =>
+          fetch(`${LOCAL_PROXY_BASE}/api/yahoo?symbol=${encodeURIComponent(s.symbol)}`)
+            .then((r) => {
+              if (!r.ok) throw new Error("HTTP " + r.status);
+              return r.json();
+            })
+            .then((data) => {
+              const result = data.chart && data.chart.result && data.chart.result[0];
+              if (!result) throw new Error("no data");
+              const m = result.meta;
+              const price = m.regularMarketPrice;
+              const prevClose = m.previousClose !== undefined ? m.previousClose : m.chartPreviousClose;
+              const change = price !== undefined && prevClose !== undefined ? price - prevClose : null;
+              const changePct = change !== null && prevClose ? (change / prevClose) * 100 : null;
+              return {
+                symbol: s.symbol,
+                label: s.label,
+                isIndex: s.isIndex,
+                name: m.longName || m.shortName || s.label,
+                currency: m.currency || "",
+                price,
+                open: m.regularMarketOpen,
+                high: m.regularMarketDayHigh,
+                low: m.regularMarketDayLow,
+                fiftyTwoWeekHigh: m.fiftyTwoWeekHigh,
+                fiftyTwoWeekLow: m.fiftyTwoWeekLow,
+                prevClose,
+                change,
+                changePct,
+                volume: m.regularMarketVolume,
+                avgVolume: m.averageDailyVolume10Day,
+                marketCap: m.marketCap,
+                trailingPE: m.trailingPE,
+                eps: m.epsTrailingTwelveMonths
+              };
+            })
+            .catch(() => ({ symbol: s.symbol, label: s.label, isIndex: s.isIndex, error: true }))
+        )
+      );
+      setStocks(results);
+      setStocksError(null);
+      setStocksLastUpdate(new Date());
+    } catch (e) {
+      setStocksError(e.message || "fetch failed");
+    } finally {
+      setStocksLoading(false);
+    }
+  }, []);
+
+  const fetchIndia = useCallback(async () => {
+    try {
+      const results = await Promise.all(
+        INDIA_SYMBOLS.map((s) =>
+          fetch(`${LOCAL_PROXY_BASE}/api/yahoo?symbol=${encodeURIComponent(s.symbol)}`)
+            .then((r) => {
+              if (!r.ok) throw new Error("HTTP " + r.status);
+              return r.json();
+            })
+            .then((data) => {
+              const result = data.chart && data.chart.result && data.chart.result[0];
+              if (!result) throw new Error("no data");
+              const m = result.meta;
+              const price = m.regularMarketPrice;
+              const prevClose = m.previousClose !== undefined ? m.previousClose : m.chartPreviousClose;
+              const change = price !== undefined && prevClose !== undefined ? price - prevClose : null;
+              const changePct = change !== null && prevClose ? (change / prevClose) * 100 : null;
+              return {
+                symbol: s.symbol,
+                label: s.label,
+                isIndex: s.isIndex,
+                name: m.longName || m.shortName || s.label,
+                price,
+                open: m.regularMarketOpen,
+                high: m.regularMarketDayHigh,
+                low: m.regularMarketDayLow,
+                fiftyTwoWeekHigh: m.fiftyTwoWeekHigh,
+                fiftyTwoWeekLow: m.fiftyTwoWeekLow,
+                prevClose,
+                change,
+                changePct,
+                volume: m.regularMarketVolume,
+                avgVolume: m.averageDailyVolume10Day,
+                marketCap: m.marketCap,
+                trailingPE: m.trailingPE,
+                eps: m.epsTrailingTwelveMonths
+              };
+            })
+            .catch(() => ({ symbol: s.symbol, label: s.label, isIndex: s.isIndex, error: true }))
+        )
+      );
+      setIndia(results);
+      setIndiaError(null);
+      setIndiaLastUpdate(new Date());
+    } catch (e) {
+      setIndiaError(e.message || "fetch failed");
+    } finally {
+      setIndiaLoading(false);
+    }
+  }, []);
+
+  const extractMarketStatus = useCallback((data) => {
+    try {
+      const meta = data.chart && data.chart.result && data.chart.result[0] && data.chart.result[0].meta;
+      if (!meta) return;
+      const now = Math.floor(Date.now() / 1000);
+      const reg = meta.currentTradingPeriod && meta.currentTradingPeriod.regular;
+      const pre = meta.currentTradingPeriod && meta.currentTradingPeriod.pre;
+      if (!reg) return;
+      const isOpen = now >= reg.start && now <= reg.end;
+      const isPre  = pre && now >= pre.start && now < reg.start;
+      setMarketStatus({
+        open: isOpen,
+        pre: isPre,
+        exchange: meta.fullExchangeName || meta.exchangeName || "",
+        timezone: meta.timezone || "",
+        closeAt: reg.end,
+        openAt: reg.start,
+      });
+    } catch (e) {}
+  }, []);
+
+  const fetchIndiaChart = useCallback(async (symbol, range) => {
+    try {
+      const cfg = YAHOO_RANGE_MAP[range] || YAHOO_RANGE_MAP["1d"];
+      const res = await fetch(`${LOCAL_PROXY_BASE}/api/yahoo?symbol=${encodeURIComponent(symbol)}&range=${cfg.range}&interval=${cfg.interval}`);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      extractMarketStatus(data);
+      const ohlc = extractYahooOhlc(data);
+      setIndiaChartData(ohlc.length > 1 ? ohlc : null);
+    } catch (e) {
+      setIndiaChartData(null);
+    }
+  }, [extractMarketStatus]);
+
+  const fetchStocksChart = useCallback(async (symbol, range) => {
+    try {
+      const cfg = YAHOO_RANGE_MAP[range] || YAHOO_RANGE_MAP["1d"];
+      const res = await fetch(`${LOCAL_PROXY_BASE}/api/yahoo?symbol=${encodeURIComponent(symbol)}&range=${cfg.range}&interval=${cfg.interval}`);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      extractMarketStatus(data);
+      const ohlc = extractYahooOhlc(data);
+      setStocksChartData(ohlc.length > 1 ? ohlc : null);
+    } catch (e) {
+      setStocksChartData(null);
+    }
+  }, [extractMarketStatus]);
+
+  const runSearch = useCallback(async (query) => {
+    if (!query.trim()) return;
+    setSearchLoading(true);
+    setSearchError(null);
+    setSelectedSearchResult(null);
+    setSearchQuote(null);
+    setSearchChartData(null);
+    try {
+      const trimmed = query.trim();
+      const looksLikeTicker = /^[A-Za-z0-9.&-]{1,15}$/.test(trimmed) && !trimmed.includes(" ");
+      const directCandidates = looksLikeTicker
+        ? [trimmed.toUpperCase(), trimmed.toUpperCase() + ".NS", trimmed.toUpperCase() + ".BO"]
+        : [];
+
+      const [searchRes, ...directResults] = await Promise.all([
+        fetch(`${LOCAL_PROXY_BASE}/api/yahoo-search?q=${encodeURIComponent(query)}&quotesCount=40`),
+        ...directCandidates.map((sym) =>
+          fetch(`${LOCAL_PROXY_BASE}/api/yahoo?symbol=${encodeURIComponent(sym)}`)
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data) => {
+              const result = data && data.chart && data.chart.result && data.chart.result[0];
+              if (!result || !result.meta || !result.meta.regularMarketPrice) return null;
+              const m = result.meta;
+              return {
+                symbol: m.symbol || sym,
+                shortname: m.shortName,
+                longname: m.longName,
+                exchange: m.exchangeName,
+                exchDisp: m.fullExchangeName,
+                quoteType: m.instrumentType || "EQUITY"
+              };
+            })
+            .catch(() => null)
+        )
+      ]);
+
+      if (!searchRes.ok) throw new Error("HTTP " + searchRes.status);
+      const data = await searchRes.json();
+      const quotes = (data.quotes || []).filter((q) => q.symbol);
+
+      const seen = new Set(quotes.map((q) => q.symbol));
+      directResults.filter(Boolean).forEach((d) => {
+        if (!seen.has(d.symbol)) {
+          quotes.unshift(d);
+          seen.add(d.symbol);
+        }
+      });
+
+      const rank = (q) => {
+        const isIndia = q.exchange === "NSI" || q.exchange === "BSE";
+        const isEquityLike = q.quoteType === "EQUITY" || q.quoteType === "ETF" || q.quoteType === "INDEX";
+        if (directCandidates.includes(q.symbol)) return -1;
+        if (isIndia && q.quoteType === "EQUITY") return 0;
+        if (isEquityLike) return 1;
+        return 2;
+      };
+      quotes.sort((a, b) => rank(a) - rank(b));
+      setSearchResults(quotes);
+    } catch (e) {
+      setSearchError(e.message || "search failed");
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  }, []);
+
+  const fetchSearchQuote = useCallback(async (result) => {
+    setSearchQuoteError(null);
+    setSearchQuote(null);
+    try {
+      const quoteRes = await fetch(`${LOCAL_PROXY_BASE}/api/yahoo?symbol=${encodeURIComponent(result.symbol)}`);
+      if (!quoteRes.ok) throw new Error("HTTP " + quoteRes.status);
+      const quoteData = await quoteRes.json();
+      const qResult = quoteData.chart && quoteData.chart.result && quoteData.chart.result[0];
+      if (!qResult) throw new Error("no data for this symbol");
+      const m = qResult.meta;
+      const price = m.regularMarketPrice;
+      const prevClose = m.previousClose !== undefined ? m.previousClose : m.chartPreviousClose;
+      const change = price !== undefined && prevClose !== undefined ? price - prevClose : null;
+      const changePct = change !== null && prevClose ? (change / prevClose) * 100 : null;
+      setSearchQuote({
+        symbol: result.symbol,
+        name: m.longName || m.shortName || result.shortname || result.symbol,
+        exchange: m.fullExchangeName || result.exchDisp || result.exchange,
+        currency: m.currency || "",
+        price,
+        open: m.regularMarketOpen,
+        high: m.regularMarketDayHigh,
+        low: m.regularMarketDayLow,
+        prevClose,
+        change,
+        changePct,
+        fiftyTwoWeekHigh: m.fiftyTwoWeekHigh,
+        fiftyTwoWeekLow: m.fiftyTwoWeekLow,
+        volume: m.regularMarketVolume,
+        avgVolume: m.averageDailyVolume10Day,
+        marketCap: m.marketCap,
+        trailingPE: m.trailingPE,
+        eps: m.epsTrailingTwelveMonths
+      });
+    } catch (e) {
+      setSearchQuoteError(e.message || "fetch failed");
+    }
+  }, []);
+
+  const fetchFundamentals = useCallback(async (symbol) => {
+    setFundamentals(null);
+    try {
+      const res = await fetch(`${LOCAL_PROXY_BASE}/api/fundamentals?symbol=${encodeURIComponent(symbol)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.error) return;
+      setFundamentals({
+        open: data.open,
+        volume: data.volume,
+        avgVolume: data.avgVolume,
+        marketCap: data.marketCap,
+        trailingPE: data.trailingPE,
+        forwardPE: data.forwardPE,
+        eps: data.eps,
+        beta: data.beta,
+        dividendYield: data.dividendYield != null ? data.dividendYield * 100 : null,
+        priceToBook: data.priceToBook,
+        fiftyTwoWeekHigh: data.fiftyTwoWeekHigh,
+        fiftyTwoWeekLow: data.fiftyTwoWeekLow,
+      });
+    } catch (e) { /* ignore */ }
+  }, []);
+
+  const fetchSearchChart = useCallback(async (symbol, range) => {
+    try {
+      const cfg = YAHOO_RANGE_MAP[range] || YAHOO_RANGE_MAP["1d"];
+      const chartRes = await fetch(`${LOCAL_PROXY_BASE}/api/yahoo?symbol=${encodeURIComponent(symbol)}&range=${cfg.range}&interval=${cfg.interval}`);
+      if (!chartRes.ok) throw new Error("HTTP " + chartRes.status);
+      const chartJson = await chartRes.json();
+      const ohlc = extractYahooOhlc(chartJson);
+      setSearchChartData(ohlc.length > 1 ? ohlc : null);
+    } catch (e) {
+      setSearchChartData(null);
+    }
+  }, []);
+
+  const fetchGlobal = useCallback(async () => {
+    try {
+      const res = await fetch("https://api.coingecko.com/api/v3/global");
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      setGlobal(data.data);
+    } catch (e) {
+      setGlobal(null);
+    }
+  }, []);
+
+  const fetchFxRates = useCallback(async () => {
+    try {
+      const entries = Object.entries(FX_TO_INR_SYMBOLS);
+      const results = await Promise.all(
+        entries.map(([cur, sym]) =>
+          fetch(`${LOCAL_PROXY_BASE}/api/yahoo?symbol=${encodeURIComponent(sym)}`)
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data) => {
+              const m = data && data.chart && data.chart.result && data.chart.result[0] && data.chart.result[0].meta;
+              return [cur, m ? m.regularMarketPrice : null];
+            })
+            .catch(() => [cur, null])
+        )
+      );
+      const rates = {};
+      results.forEach(([cur, rate]) => { if (rate) rates[cur] = rate; });
+      setFxRates(rates);
+    } catch (e) {
+      /* keep previous rates on failure */
+    }
+  }, []);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const res = await fetch("https://api.coingecko.com/api/v3/coins/categories");
+      if (res.status === 429) throw new Error("RATE LIMITED BY COINGECKO — TRY AGAIN SHORTLY");
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      if (!Array.isArray(data)) throw new Error((data && data.status && data.status.error_message) || "unexpected response");
+      const byId = {};
+      data.forEach((c) => { if (c && c.id) byId[c.id] = c; });
+      const sectors = SECTOR_CATEGORY_IDS
+        .map((id) => byId[id])
+        .filter((c) => c && c.market_cap);
+      setCategories(sectors);
+      setCategoriesError(null);
+    } catch (e) {
+      setCategories([]);
+      setCategoriesError(e.message || "fetch failed");
+    } finally {
+      setCategoriesLoading(false);
+    }
+  }, []);
+
+  const fetchNews = useCallback(async (query, fallbackQuery, tickerFilter) => {
+    setNewsLoading(true);
+    try {
+      const res = await fetch(`${LOCAL_PROXY_BASE}/api/yahoo-search?q=${encodeURIComponent(query)}&quotesCount=0&newsCount=25`);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      let items = data.news || [];
+
+      if (tickerFilter) {
+        const bareSymbol = tickerFilter.split(".")[0];
+        const relevant = items.filter((n) =>
+          (n.relatedTickers || []).some((t) => t === tickerFilter || t.split(".")[0] === bareSymbol)
+        );
+        if (relevant.length > 0) items = relevant;
+      }
+
+      if (items.length === 0 && fallbackQuery && fallbackQuery !== query) {
+        const fbRes = await fetch(`${LOCAL_PROXY_BASE}/api/yahoo-search?q=${encodeURIComponent(fallbackQuery)}&quotesCount=0&newsCount=20`);
+        if (fbRes.ok) {
+          const fbData = await fbRes.json();
+          items = fbData.news || [];
+        }
+      }
+
+      items.sort((a, b) => (b.providerPublishTime || 0) - (a.providerPublishTime || 0));
+      setNews(items);
+      setNewsLastFetch(new Date());
+      setNewsError(null);
+    } catch (e) {
+      setNews([]);
+      setNewsError(e.message || "fetch failed");
+    } finally {
+      setNewsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchMarkets();
+    const t = setInterval(fetchMarkets, 30000);
+    return () => clearInterval(t);
+  }, [fetchMarkets]);
+
+  useEffect(() => {
+    if (tab !== "crypto") return;
+    fetchChart(selected, chartRange);
+  }, [selected, tab, chartRange, fetchChart]);
+
+  useEffect(() => {
+    fetchStocks();
+    const t = setInterval(fetchStocks, 45000);
+    return () => clearInterval(t);
+  }, [fetchStocks]);
+
+  useEffect(() => {
+    fetchIndia();
+    const t = setInterval(fetchIndia, 45000);
+    return () => clearInterval(t);
+  }, [fetchIndia]);
+
+  useEffect(() => {
+    if (tab !== "india") return;
+    fetchIndiaChart(selectedIndia, chartRange);
+  }, [selectedIndia, tab, chartRange, fetchIndiaChart]);
+
+  useEffect(() => {
+    if (tab !== "stocks") return;
+    fetchStocksChart(selectedStock, chartRange);
+  }, [selectedStock, tab, chartRange, fetchStocksChart]);
+
+  useEffect(() => {
+    if (tab !== "search" || !selectedSearchResult) return;
+    fetchSearchChart(selectedSearchResult.symbol, chartRange);
+  }, [selectedSearchResult, tab, chartRange, fetchSearchChart]);
+
+  useEffect(() => {
+    if (tab === "stocks") fetchFundamentals(selectedStock);
+  }, [selectedStock, tab, fetchFundamentals]);
+
+  useEffect(() => {
+    if (tab === "india") fetchFundamentals(selectedIndia);
+  }, [selectedIndia, tab, fetchFundamentals]);
+
+  useEffect(() => {
+    if (tab === "search" && selectedSearchResult) fetchFundamentals(selectedSearchResult.symbol);
+  }, [selectedSearchResult, tab, fetchFundamentals]);
+
+  // Live chart refresh when market is open
+  useEffect(() => {
+    if (!marketStatus || !marketStatus.open) return;
+    const intervalMs = (chartRange === "5m") ? 30000 : (chartRange === "30m") ? 90000 : 120000;
+    const fn = tab === "india"
+      ? () => fetchIndiaChart(selectedIndia, chartRange)
+      : tab === "stocks"
+        ? () => fetchStocksChart(selectedStock, chartRange)
+        : tab === "search" && selectedSearchResult
+          ? () => fetchSearchChart(selectedSearchResult.symbol, chartRange)
+          : null;
+    if (!fn) return;
+    const t = setInterval(fn, intervalMs);
+    return () => clearInterval(t);
+  }, [marketStatus, tab, chartRange, selectedIndia, selectedStock, selectedSearchResult,
+      fetchIndiaChart, fetchStocksChart, fetchSearchChart]);
+
+  // Faster price refresh when market is open
+  useEffect(() => {
+    if (!marketStatus || !marketStatus.open) return;
+    const t1 = setInterval(fetchStocks, 15000);
+    const t2 = setInterval(fetchIndia, 15000);
+    return () => { clearInterval(t1); clearInterval(t2); };
+  }, [marketStatus, fetchStocks, fetchIndia]);
+
+  useEffect(() => {
+    fetchGlobal();
+    const t = setInterval(fetchGlobal, 60000);
+    return () => clearInterval(t);
+  }, [fetchGlobal]);
+
+  useEffect(() => {
+    fetchFxRates();
+    const t = setInterval(fetchFxRates, 300000);
+    return () => clearInterval(t);
+  }, [fetchFxRates]);
+
+  useEffect(() => {
+    fetchCategories();
+    const t = setInterval(fetchCategories, 300000);
+    return () => clearInterval(t);
+  }, [fetchCategories]);
+
+  let newsQuery = "stock market";
+  let newsFallback = "stock market";
+  let newsTickerFilter = null;
+  if (tab === "crypto") {
+    const c = coins.find((x) => x.id === selected);
+    newsQuery = c ? c.name : "cryptocurrency market";
+    newsFallback = "cryptocurrency market";
+  } else if (tab === "stocks") {
+    const s = stocks.find((x) => x.symbol === selectedStock);
+    if (s && !s.error) {
+      newsQuery = s.isIndex ? (s.name || s.label) : s.symbol;
+      newsTickerFilter = s.isIndex ? null : s.symbol;
+    } else {
+      newsQuery = "global stock market";
+    }
+    newsFallback = "global stock market";
+  } else if (tab === "india") {
+    const s = india.find((x) => x.symbol === selectedIndia);
+    if (s && !s.error) {
+      newsQuery = s.isIndex ? (s.name || s.label) : s.symbol;
+      newsTickerFilter = s.isIndex ? null : s.symbol;
+    } else {
+      newsQuery = "Indian stock market";
+    }
+    newsFallback = "Indian stock market";
+  } else if (tab === "search" && selectedSearchResult) {
+    newsQuery = selectedSearchResult.symbol;
+    newsTickerFilter = selectedSearchResult.symbol;
+    newsFallback = "stock market";
+  }
+
+  useEffect(() => {
+    fetchNews(newsQuery, newsFallback, newsTickerFilter);
+    const t = setInterval(() => fetchNews(newsQuery, newsFallback, newsTickerFilter), 30000);
+    return () => clearInterval(t);
+  }, [newsQuery, newsFallback, newsTickerFilter, fetchNews]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("jj_cash_inr", JSON.stringify(cashInr));
+    } catch (e) { /* storage unavailable — stays in-memory only */ }
+  }, [cashInr]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("jj_positions", JSON.stringify(positions));
+    } catch (e) { /* storage unavailable — stays in-memory only */ }
+  }, [positions]);
+
+  const getCurrentTradableAsset = () => {
+    if (tab === "crypto" && selectedCoin) {
+      return {
+        source: "crypto", sourceId: selectedCoin.id,
+        label: selectedCoin.symbol.toUpperCase(), name: selectedCoin.name,
+        price: selectedCoin.current_price, currency: "USD", ohlc: chartData
+      };
+    }
+    if (tab === "stocks" && selectedStockData && !selectedStockData.error) {
+      return {
+        source: "stocks", sourceId: selectedStockData.symbol,
+        label: selectedStockData.label, name: selectedStockData.name,
+        price: selectedStockData.price, currency: selectedStockData.currency, ohlc: stocksChartData
+      };
+    }
+    if (tab === "india" && selectedIndiaData && !selectedIndiaData.error) {
+      return {
+        source: "india", sourceId: selectedIndiaData.symbol,
+        label: selectedIndiaData.label, name: selectedIndiaData.name,
+        price: selectedIndiaData.price, currency: "INR", ohlc: indiaChartData
+      };
+    }
+    return null;
+  };
+
+  const getLivePrice = (pos) => {
+    if (pos.source === "crypto") {
+      const c = coins.find((x) => x.id === pos.sourceId);
+      return c ? c.current_price : null;
+    }
+    if (pos.source === "stocks") {
+      const s = stocks.find((x) => x.symbol === pos.sourceId);
+      return s && !s.error ? s.price : null;
+    }
+    if (pos.source === "india") {
+      const s = india.find((x) => x.symbol === pos.sourceId);
+      return s && !s.error ? s.price : null;
+    }
+    return null;
+  };
+
+  const openPosition = () => {
+    setTradeError(null);
+    const asset = getCurrentTradableAsset();
+    if (!asset) {
+      setTradeError("Select a live security in CRYPTO, INTERNATIONAL STOCKS, or INDIA to trade.");
+      return;
+    }
+    const qty = parseFloat(tradeQty);
+    if (!qty || qty <= 0) {
+      setTradeError("Enter a valid quantity.");
+      return;
+    }
+    const fx = fxToInr(asset.currency, fxRates);
+    if (fx === null) {
+      setTradeError("FX rate unavailable for " + asset.currency + " — try again shortly.");
+      return;
+    }
+
+    if (tradeKind === "SPOT") {
+      const costInr = qty * asset.price * fx;
+      if (costInr > cashInr) {
+        setTradeError("Insufficient virtual cash for this order.");
+        return;
+      }
+      setCashInr((c) => c - costInr);
+      setPositions((p) => {
+        const existing = p.find((x) => x.kind === "SPOT" && x.source === asset.source && x.sourceId === asset.sourceId);
+        if (existing) {
+          const newQty = existing.qty + qty;
+          const newCostBasisInr = existing.entryPrice * existing.entryFx * existing.qty + asset.price * fx * qty;
+          const blendedEntryPrice = newCostBasisInr / fx / newQty;
+          return p.map((x) => x.id === existing.id
+            ? { ...x, qty: newQty, entryPrice: blendedEntryPrice, entryFx: fx }
+            : x
+          );
+        }
+        return [...p, {
+          id: Date.now() + Math.random(), kind: "SPOT", side: "LONG",
+          source: asset.source, sourceId: asset.sourceId, label: asset.label, name: asset.name,
+          currency: asset.currency, qty, entryPrice: asset.price, entryFx: fx, openedAt: Date.now()
+        }];
+      });
+      setTradeQty("");
+    } else if (tradeKind === "FUTURE") {
+      const leverage = tradeLeverage || 1;
+      const marginInr = (qty * asset.price * fx) / leverage;
+      if (marginInr > cashInr) {
+        setTradeError("Insufficient virtual margin for this order.");
+        return;
+      }
+      setCashInr((c) => c - marginInr);
+      setPositions((p) => [...p, {
+        id: Date.now() + Math.random(), kind: "FUTURE", side: tradeSide,
+        source: asset.source, sourceId: asset.sourceId, label: asset.label, name: asset.name,
+        currency: asset.currency, qty, entryPrice: asset.price, entryFx: fx,
+        leverage, marginInr, openedAt: Date.now()
+      }]);
+      setTradeQty("");
+    } else if (tradeKind === "OPTION") {
+      const strike = parseFloat(tradeStrike);
+      if (!strike || strike <= 0) {
+        setTradeError("Enter a valid strike price.");
+        return;
+      }
+      const sentiment = computeSentiment({ price: asset.price, ohlc: asset.ohlc });
+      const dailyVol = sentiment.dailyVolPct;
+      if (dailyVol === null || dailyVol === undefined) {
+        setTradeError("Not enough chart history yet to price this option — wait a moment and retry.");
+        return;
+      }
+      const sigma = (dailyVol / 100) * Math.sqrt(252);
+      const T = tradeExpiryDays / 365;
+      const premium = bsPrice(asset.price, strike, T, sigma, RISK_FREE_RATE, tradeOptionType);
+      const costInr = premium * qty * fx;
+      if (costInr <= 0 || !isFinite(costInr)) {
+        setTradeError("Could not price this option — try a different strike or expiry.");
+        return;
+      }
+      if (costInr > cashInr) {
+        setTradeError("Insufficient virtual cash for this premium.");
+        return;
+      }
+      setCashInr((c) => c - costInr);
+      setPositions((p) => [...p, {
+        id: Date.now() + Math.random(), kind: "OPTION", optionType: tradeOptionType,
+        source: asset.source, sourceId: asset.sourceId, label: asset.label, name: asset.name,
+        currency: asset.currency, qty, strike, entryPrice: premium, entryFx: fx,
+        sigma, expiryDays: tradeExpiryDays, openedAt: Date.now()
+      }]);
+      setTradeQty("");
+      setTradeStrike("");
+    }
+  };
+
+  const valuePosition = (pos) => {
+    const S = getLivePrice(pos);
+    const fx = fxToInr(pos.currency, fxRates) || pos.entryFx || 1;
+    if (S === null) return { value: null, pnl: null, pnlPct: null, label: "PRICE UNAVAILABLE" };
+
+    if (pos.kind === "SPOT") {
+      const value = S * pos.qty * fx;
+      const cost = pos.entryPrice * pos.qty * pos.entryFx;
+      const pnl = value - cost;
+      return { value, pnl, pnlPct: cost ? (pnl / cost) * 100 : null, current: S };
+    }
+    if (pos.kind === "FUTURE") {
+      const dirSign = pos.side === "LONG" ? 1 : -1;
+      const pnlNative = (S - pos.entryPrice) * pos.qty * pos.leverage * dirSign;
+      const pnl = pnlNative * fx;
+      const value = pos.marginInr + pnl;
+      return { value, pnl, pnlPct: pos.marginInr ? (pnl / pos.marginInr) * 100 : null, current: S, liquidated: pnl <= -pos.marginInr };
+    }
+    if (pos.kind === "OPTION") {
+      const daysElapsed = (Date.now() - pos.openedAt) / 86400000;
+      const tRemaining = Math.max(0, (pos.expiryDays - daysElapsed) / 365);
+      const premiumNow = bsPrice(S, pos.strike, tRemaining, pos.sigma, RISK_FREE_RATE, pos.optionType);
+      const value = premiumNow * pos.qty * fx;
+      const cost = pos.entryPrice * pos.qty * pos.entryFx;
+      const pnl = value - cost;
+      return { value, pnl, pnlPct: cost ? (pnl / cost) * 100 : null, current: S, expired: tRemaining <= 0, premiumNow };
+    }
+    return { value: null, pnl: null, pnlPct: null };
+  };
+
+  const closePosition = (id) => {
+    const pos = positions.find((p) => p.id === id);
+    if (!pos) return;
+    const v = valuePosition(pos);
+    const settled = v.value !== null ? Math.max(0, v.value) : 0;
+    setCashInr((c) => c + settled);
+    setPositions((p) => p.filter((x) => x.id !== id));
+  };
+
+  const sellSpot = () => {
+    setTradeError(null);
+    const asset = getCurrentTradableAsset();
+    if (!asset) {
+      setTradeError("Select a live security in CRYPTO, INTERNATIONAL STOCKS, or INDIA to trade.");
+      return;
+    }
+    const qty = parseFloat(tradeQty);
+    if (!qty || qty <= 0) {
+      setTradeError("Enter a valid quantity.");
+      return;
+    }
+    const existing = positions.find((x) => x.kind === "SPOT" && x.source === asset.source && x.sourceId === asset.sourceId);
+    if (!existing || existing.qty < qty) {
+      setTradeError("You only hold " + (existing ? existing.qty : 0) + " " + asset.label + " — can't sell " + qty + ".");
+      return;
+    }
+    const fx = fxToInr(asset.currency, fxRates);
+    if (fx === null) {
+      setTradeError("FX rate unavailable for " + asset.currency + " — try again shortly.");
+      return;
+    }
+    const proceedsInr = qty * asset.price * fx;
+    setCashInr((c) => c + proceedsInr);
+    setPositions((p) => {
+      const remainingQty = existing.qty - qty;
+      if (remainingQty <= 0.00000001) {
+        return p.filter((x) => x.id !== existing.id);
+      }
+      return p.map((x) => x.id === existing.id ? { ...x, qty: remainingQty } : x);
+    });
+    setTradeQty("");
+  };
+
+  useEffect(() => {
+    positions.forEach((pos) => {
+      const v = valuePosition(pos);
+      if (pos.kind === "FUTURE" && v.liquidated) {
+        setPositions((p) => p.filter((x) => x.id !== pos.id));
+      } else if (pos.kind === "OPTION" && v.expired) {
+        const settled = v.value !== null ? Math.max(0, v.value) : 0;
+        setCashInr((c) => c + settled);
+        setPositions((p) => p.filter((x) => x.id !== pos.id));
+      }
+    });
+  }, [coins, stocks, india]);
+
+  const selectedCoin = coins.find((c) => c.id === selected);
+  const filtered = coins.filter((c) =>
+    (c.symbol.toUpperCase()).includes(filter.toUpperCase()) ||
+    c.name.toUpperCase().includes(filter.toUpperCase())
+  );
+
+  const selectedStockData = stocks.find((s) => s.symbol === selectedStock);
+  const filteredStocks = stocks.filter((s) => s.label.toUpperCase().includes(filter.toUpperCase()));
+  const stocksIndices = filteredStocks.filter((s) => s.isIndex);
+  const stocksOnly = filteredStocks.filter((s) => !s.isIndex);
+
+  const selectedIndiaData = india.find((s) => s.symbol === selectedIndia);
+  const filteredIndia = india.filter((s) => s.label.toUpperCase().includes(filter.toUpperCase()));
+
+  const positionsWithValue = positions.map((p) => ({ ...p, ...valuePosition(p) }));
+  const positionsValueTotal = positionsWithValue.reduce((s, p) => s + (p.value || 0), 0);
+  const portfolioTotal = cashInr + positionsValueTotal;
+  const portfolioPnl = portfolioTotal - STARTING_CASH_INR;
+  const currentAssetForTrade = getCurrentTradableAsset();
+
+  const topbarEl = E("div", { className: "topbar" },
+    E("div", {
+      className: "topbar-brand",
+      onClick: () => window.location.reload(),
+      style: { cursor: "pointer" }
+    },
+      E("img", {
+        src: `${LOCAL_PROXY_BASE}/logo.png`,
+        className: "site-logo",
+        alt: "Bloomyco.in",
+        onError: (e) => { e.target.style.display = "none"; }
+      }),
+      E("span", null, "BLOOMYCO.IN")
+    ),
+    E(Clock, null)
+  );
+
+  const computeCmdSuggestions = useCallback((val) => {
+    const q = val.trim().toUpperCase();
+    if (!q) return [];
+    const results = [];
+    coins.forEach((c) => {
+      if (c.symbol.toUpperCase().startsWith(q) || c.name.toUpperCase().includes(q)) {
+        results.push({ type: "CRYPTO", id: c.id, label: c.symbol.toUpperCase(), name: c.name });
+      }
+    });
+    INDIA_SYMBOLS.forEach((s) => {
+      if (s.label.toUpperCase().startsWith(q) || s.symbol.toUpperCase().includes(q)) {
+        results.push({ type: "INDIA", id: s.symbol, label: s.label, name: s.label });
+      }
+    });
+    INTL_SYMBOLS.forEach((s) => {
+      if (s.label.toUpperCase().startsWith(q) || s.symbol.toUpperCase().includes(q)) {
+        results.push({ type: "INTL", id: s.symbol, label: s.label, name: s.label });
+      }
+    });
+    return results.slice(0, 10);
+  }, [coins]);
+
+  const executeCmdSuggestion = useCallback((suggestion) => {
+    if (suggestion.type === "CRYPTO") {
+      setTab("crypto");
+      setSelected(suggestion.id);
+    } else if (suggestion.type === "INDIA") {
+      setTab("india");
+      setSelectedIndia(suggestion.id);
+    } else if (suggestion.type === "INTL") {
+      setTab("stocks");
+      setSelectedStock(suggestion.id);
+    }
+    setCmdInput("");
+    setFilter("");
+    setCmdSuggestions([]);
+    setCmdDropdownOpen(false);
+  }, []);
+
+  const handleCmdChange = useCallback((val) => {
+    setCmdInput(val);
+    setFilter(val);
+    const sugs = computeCmdSuggestions(val);
+    setCmdSuggestions(sugs);
+    setCmdDropdownOpen(sugs.length > 0 && val.trim().length > 0);
+  }, [computeCmdSuggestions]);
+
+  const handleCmdKeyDown = useCallback((e) => {
+    if (e.key === "Enter") {
+      const trimmed = cmdInput.trim();
+      if (!trimmed) return;
+      if (cmdSuggestions.length > 0) {
+        executeCmdSuggestion(cmdSuggestions[0]);
+        return;
+      }
+      setSearchQuery(trimmed);
+      setTab("search");
+      runSearch(trimmed);
+      setCmdInput("");
+      setFilter("");
+      setCmdDropdownOpen(false);
+    } else if (e.key === "Escape") {
+      setCmdDropdownOpen(false);
+      setCmdInput("");
+      setFilter("");
+    }
+  }, [cmdInput, cmdSuggestions, executeCmdSuggestion, runSearch]);
+
+  const cmdbarEl = E("div", { className: "cmdbar", style: { position: "relative" } },
+    E("span", { className: "label" }, "CMD>"),
+    E("input", {
+      placeholder: "Type any ticker or name — suggestions appear below, ENTER to navigate...",
+      value: cmdInput,
+      onChange: (e) => handleCmdChange(e.target.value),
+      onKeyDown: handleCmdKeyDown,
+      onFocus: () => { if (cmdSuggestions.length > 0) setCmdDropdownOpen(true); },
+      onBlur: () => setTimeout(() => setCmdDropdownOpen(false), 160),
+      style: { flex: 1 }
+    }),
+    cmdDropdownOpen
+      ? E("div", { className: "cmd-dropdown" },
+          E("div", { className: "cmd-hint" }, "↑↓ to browse · ENTER to jump · ESC to close"),
+          cmdSuggestions.map((s, i) =>
+            E("div", {
+              key: i,
+              className: "cmd-suggestion",
+              onMouseDown: (ev) => { ev.preventDefault(); executeCmdSuggestion(s); }
+            },
+              E("span", { className: "cmd-sug-type" }, s.type),
+              E("span", { className: "cmd-sug-label" }, s.label),
+              s.name !== s.label ? E("span", { className: "cmd-sug-name" }, s.name) : null
+            )
+          )
+        )
+      : null
+  );
+
+  const indicesBarEl = global ? E("div", { className: "indices-bar" },
+    E("span", { className: "idx-item" },
+      E("span", { className: "idx-label" }, "TOTAL MKT CAP"),
+      E("span", { className: "mono-num" }, "$" + fmtCompact(global.total_market_cap && global.total_market_cap.usd))
+    ),
+    E("span", { className: "idx-item" },
+      E("span", { className: "idx-label" }, "24H VOL"),
+      E("span", { className: "mono-num" }, "$" + fmtCompact(global.total_volume && global.total_volume.usd))
+    ),
+    E("span", { className: "idx-item" },
+      E("span", { className: "idx-label" }, "BTC DOM"),
+      E("span", { className: "mono-num" }, ((global.market_cap_percentage && global.market_cap_percentage.btc) || 0).toFixed(1) + "%")
+    ),
+    E("span", { className: "idx-item" },
+      E("span", { className: "idx-label" }, "ETH DOM"),
+      E("span", { className: "mono-num" }, ((global.market_cap_percentage && global.market_cap_percentage.eth) || 0).toFixed(1) + "%")
+    ),
+    E("span", { className: "idx-item" },
+      E("span", { className: "idx-label" }, "MKT CAP CHG 24H"),
+      E("span", { className: "mono-num " + (global.market_cap_change_percentage_24h_usd >= 0 ? "up" : "down") },
+        (global.market_cap_change_percentage_24h_usd >= 0 ? "+" : "") + (global.market_cap_change_percentage_24h_usd || 0).toFixed(2) + "%"
+      )
+    ),
+    E("span", { className: "idx-item" },
+      E("span", { className: "idx-label" }, "ACTIVE COINS"),
+      E("span", { className: "mono-num" }, String(global.active_cryptocurrencies))
+    )
+  ) : null;
+
+  const tickerTapeEl = E("div", { className: "ticker-tape" },
+    E("div", { className: "ticker-track" },
+      coins.concat(coins).map((c, i) =>
+        E("span", { key: i, className: "ticker-item" },
+          c.symbol.toUpperCase() + " ",
+          E("span", { className: "mono-num" }, "$" + fmtUsd(c.current_price)),
+          " ",
+          E("span", { className: c.price_change_percentage_24h >= 0 ? "up" : "down" },
+            (c.price_change_percentage_24h >= 0 ? "▲ " : "▼ ") + Math.abs(c.price_change_percentage_24h || 0).toFixed(2) + "%"
+          )
+        )
+      )
+    )
+  );
+
+  let watchlistContent;
+  if (tab === "crypto") {
+    watchlistContent = loading
+      ? E("div", { className: "empty" }, "LOADING MARKET DATA...")
+      : E("table", null,
+          E("thead", null,
+            E("tr", null,
+              E("th", null, "SYM"),
+              E("th", null, "NAME"),
+              E("th", { style: { textAlign: "right" } }, "PRICE"),
+              E("th", { style: { textAlign: "right" } }, "24H %"),
+              E("th", { style: { textAlign: "right" } }, "MKT CAP"),
+              E("th", { style: { textAlign: "right" } }, "VOL 24H")
+            )
+          ),
+          E("tbody", null,
+            filtered.map((c) =>
+              E("tr", {
+                key: c.id,
+                className: c.id === selected ? "selected" : "",
+                onClick: () => setSelected(c.id)
+              },
+                E("td", { style: { color: "var(--cyan)" } }, c.symbol.toUpperCase()),
+                E("td", null, c.name),
+                E("td", { className: "mono-num", style: { textAlign: "right" } }, "$" + fmtUsd(c.current_price)),
+                E("td", {
+                  className: "mono-num " + (c.price_change_percentage_24h >= 0 ? "up" : "down"),
+                  style: { textAlign: "right" }
+                }, (c.price_change_percentage_24h >= 0 ? "+" : "") + (c.price_change_percentage_24h || 0).toFixed(2) + "%"),
+                E("td", { className: "mono-num", style: { textAlign: "right" } }, "$" + fmtCompact(c.market_cap)),
+                E("td", { className: "mono-num", style: { textAlign: "right" } }, "$" + fmtCompact(c.total_volume))
+              )
+            ).concat(
+              filtered.length === 0
+                ? [E("tr", { key: "empty" }, E("td", { colSpan: 6, className: "empty" }, "NO MATCHES"))]
+                : []
+            )
+          )
+        );
+  } else {
+    const stockIndexBlocksEl = stocksLoading
+      ? null
+      : E("div", { className: "index-blocks" },
+          stocksIndices.map((s) =>
+            E("div", {
+              key: s.symbol,
+              className: "index-card" + (s.symbol === selectedStock ? " active" : ""),
+              onClick: () => setSelectedStock(s.symbol)
+            },
+              E("div", { className: "ic-label" }, s.label),
+              s.error
+                ? E("div", { className: "ic-chg empty" }, "UNAVAILABLE")
+                : E("div", null,
+                    E("div", { className: "ic-price mono-num" }, fmtCcy(s.price, s.currency)),
+                    E("div", { className: "ic-chg mono-num " + (s.changePct >= 0 ? "up" : "down") },
+                      (s.changePct >= 0 ? "▲ " : "▼ ") + (s.change >= 0 ? "+" : "") + fmtCcy(s.change, s.currency) + " (" + (s.changePct >= 0 ? "+" : "") + (s.changePct || 0).toFixed(2) + "%)"
+                    )
+                  )
+            )
+          )
+        );
+
+    let stocksOnlyTable;
+    if (stocksLoading) {
+      stocksOnlyTable = E("div", { className: "empty" }, "LOADING MARKET DATA...");
+    } else {
+      stocksOnlyTable = E("table", null,
+        E("thead", null,
+          E("tr", null,
+            E("th", null, "SYM"),
+            E("th", null, "NAME"),
+            E("th", { style: { textAlign: "right" } }, "PRICE"),
+            E("th", { style: { textAlign: "right" } }, "CHANGE"),
+            E("th", { style: { textAlign: "right" } }, "CHANGE %"),
+            E("th", { style: { textAlign: "right" } }, "HIGH"),
+            E("th", { style: { textAlign: "right" } }, "LOW")
+          )
+        ),
+        E("tbody", null,
+          stocksOnly.map((s) =>
+            s.error
+              ? E("tr", { key: s.symbol }, E("td", { colSpan: 7, className: "empty" }, s.label + " — DATA UNAVAILABLE"))
+              : E("tr", {
+                  key: s.symbol,
+                  className: s.symbol === selectedStock ? "selected" : "",
+                  onClick: () => setSelectedStock(s.symbol)
+                },
+                  E("td", { style: { color: "var(--cyan)" } }, s.label),
+                  E("td", null, s.name),
+                  E("td", { className: "mono-num", style: { textAlign: "right" } }, fmtCcy(s.price, s.currency)),
+                  E("td", {
+                    className: "mono-num " + (s.change >= 0 ? "up" : "down"),
+                    style: { textAlign: "right" }
+                  }, (s.change >= 0 ? "+" : "") + fmtCcy(s.change, s.currency)),
+                  E("td", {
+                    className: "mono-num " + (s.changePct >= 0 ? "up" : "down"),
+                    style: { textAlign: "right" }
+                  }, (s.changePct >= 0 ? "+" : "") + (s.changePct || 0).toFixed(2) + "%"),
+                  E("td", { className: "mono-num", style: { textAlign: "right" } }, fmtCcy(s.high, s.currency)),
+                  E("td", { className: "mono-num", style: { textAlign: "right" } }, fmtCcy(s.low, s.currency))
+                )
+          ).concat(
+            stocksOnly.length === 0
+              ? [E("tr", { key: "empty" }, E("td", { colSpan: 7, className: "empty" }, "NO MATCHES"))]
+              : []
+          )
+        )
+      );
+    }
+
+    watchlistContent = E("div", null,
+      stockIndexBlocksEl,
+      E("div", { className: "india-section-label" }, "INTERNATIONAL STOCKS"),
+      stocksOnlyTable
+    );
+  }
+
+  const indiaIndices = filteredIndia.filter((s) => s.isIndex);
+  const indiaStocks = filteredIndia.filter((s) => !s.isIndex);
+
+  const indexBlocksEl = indiaLoading
+    ? null
+    : E("div", { className: "index-blocks" },
+        indiaIndices.map((s) =>
+          E("div", {
+            key: s.symbol,
+            className: "index-card" + (s.symbol === selectedIndia ? " active" : ""),
+            onClick: () => setSelectedIndia(s.symbol)
+          },
+            E("div", { className: "ic-label" }, s.label),
+            s.error
+              ? E("div", { className: "ic-chg empty" }, "UNAVAILABLE")
+              : E("div", null,
+                  E("div", { className: "ic-price mono-num" }, "₹" + fmtInr(s.price)),
+                  E("div", { className: "ic-chg mono-num " + (s.changePct >= 0 ? "up" : "down") },
+                    (s.changePct >= 0 ? "▲ " : "▼ ") + (s.change >= 0 ? "+" : "") + fmtInr(s.change) + " (" + (s.changePct >= 0 ? "+" : "") + (s.changePct || 0).toFixed(2) + "%)"
+                  )
+                )
+          )
+        )
+      );
+
+  let indiaStocksTable;
+  if (indiaLoading) {
+    indiaStocksTable = E("div", { className: "empty" }, "LOADING MARKET DATA...");
+  } else {
+    indiaStocksTable = E("table", null,
+      E("thead", null,
+        E("tr", null,
+          E("th", null, "SYM"),
+          E("th", { style: { textAlign: "right" } }, "PRICE"),
+          E("th", { style: { textAlign: "right" } }, "CHANGE"),
+          E("th", { style: { textAlign: "right" } }, "CHANGE %"),
+          E("th", { style: { textAlign: "right" } }, "HIGH"),
+          E("th", { style: { textAlign: "right" } }, "LOW")
+        )
+      ),
+      E("tbody", null,
+        indiaStocks.map((s) =>
+          s.error
+            ? E("tr", { key: s.symbol }, E("td", { colSpan: 6, className: "empty" }, s.label + " — DATA UNAVAILABLE"))
+            : E("tr", {
+                key: s.symbol,
+                className: s.symbol === selectedIndia ? "selected" : "",
+                onClick: () => setSelectedIndia(s.symbol)
+              },
+                E("td", { style: { color: "var(--cyan)" } }, s.label),
+                E("td", { className: "mono-num", style: { textAlign: "right" } }, "₹" + fmtInr(s.price)),
+                E("td", {
+                  className: "mono-num " + (s.change >= 0 ? "up" : "down"),
+                  style: { textAlign: "right" }
+                }, (s.change >= 0 ? "+" : "") + fmtInr(s.change)),
+                E("td", {
+                  className: "mono-num " + (s.changePct >= 0 ? "up" : "down"),
+                  style: { textAlign: "right" }
+                }, (s.changePct >= 0 ? "+" : "") + (s.changePct || 0).toFixed(2) + "%"),
+                E("td", { className: "mono-num", style: { textAlign: "right" } }, "₹" + fmtInr(s.high)),
+                E("td", { className: "mono-num", style: { textAlign: "right" } }, "₹" + fmtInr(s.low))
+              )
+        ).concat(
+          indiaStocks.length === 0
+            ? [E("tr", { key: "empty" }, E("td", { colSpan: 6, className: "empty" }, "NO MATCHES"))]
+            : []
+        )
+      )
+    );
+  }
+
+  const indiaWatchlistContent = E("div", null,
+    indexBlocksEl,
+    E("div", { className: "india-section-label" }, "TOP NSE STOCKS"),
+    indiaStocksTable
+  );
+
+  const searchPanelContent = E("div", null,
+    E("div", { className: "pf-form", style: { marginBottom: 10 } },
+      E("input", {
+        placeholder: "Search any company or ticker, any market (e.g. infosys, tesla, vodafone)...",
+        value: searchQuery,
+        onChange: (e) => setSearchQuery(e.target.value),
+        onKeyDown: (e) => { if (e.key === "Enter") runSearch(searchQuery); },
+        style: { flex: 1 }
+      }),
+      E("button", { onClick: () => runSearch(searchQuery) }, "SEARCH")
+    ),
+    searchLoading
+      ? E("div", { className: "empty" }, "SEARCHING...")
+      : searchError
+        ? E("div", { className: "empty" }, searchError)
+        : searchResults.length === 0
+          ? E("div", { className: "empty" }, "TYPE A COMPANY NAME OR TICKER AND HIT SEARCH")
+          : E("table", null,
+              E("thead", null,
+                E("tr", null,
+                  E("th", null, "SYM"),
+                  E("th", null, "NAME"),
+                  E("th", null, "EXCHANGE")
+                )
+              ),
+              E("tbody", null,
+                searchResults.map((r, i) =>
+                  E("tr", {
+                    key: r.symbol + i,
+                    className: selectedSearchResult && selectedSearchResult.symbol === r.symbol ? "selected" : "",
+                    onClick: () => { setSelectedSearchResult(r); fetchSearchQuote(r); }
+                  },
+                    E("td", { style: { color: "var(--cyan)" } }, r.symbol),
+                    E("td", null, r.longname || r.shortname || ""),
+                    E("td", null, r.exchDisp || r.exchange || "")
+                  )
+                )
+              )
+            )
+  );
+
+  const watchlistPanelEl = E("div", { className: "panel" },
+    E("div", { className: "tabs" },
+      E("span", { className: "tab" + (tab === "india" ? " active" : ""), onClick: () => setTab("india") }, "INDIA"),
+      E("span", { className: "tab" + (tab === "stocks" ? " active" : ""), onClick: () => setTab("stocks") }, "INTERNATIONAL STOCKS"),
+      E("span", { className: "tab" + (tab === "crypto" ? " active" : ""), onClick: () => setTab("crypto") }, "CRYPTO"),
+      E("span", { className: "tab" + (tab === "search" ? " active" : ""), onClick: () => setTab("search") }, "SEARCH")
+    ),
+    tab === "crypto" ? watchlistContent
+      : tab === "stocks" ? watchlistContent
+      : tab === "india" ? indiaWatchlistContent
+      : searchPanelContent
+  );
+
+  let detailContent;
+  if (tab === "crypto") {
+    detailContent = selectedCoin
+      ? E("div", null,
+          E("div", { style: { marginBottom: 10 } },
+            E("span", { style: { color: "var(--cyan)", fontSize: 16, fontWeight: 700 } }, selectedCoin.symbol.toUpperCase()),
+            " ",
+            E("span", { style: { color: "var(--dim)" } }, selectedCoin.name)
+          ),
+          E("div", { className: "price-big mono-num" },
+            "$" + fmtUsd(selectedCoin.current_price),
+            " ",
+            E("span", {
+              style: { fontSize: 15 },
+              className: selectedCoin.price_change_percentage_24h >= 0 ? "up" : "down"
+            }, (selectedCoin.price_change_percentage_24h >= 0 ? "▲ " : "▼ ") + Math.abs(selectedCoin.price_change_percentage_24h || 0).toFixed(2) + "%")
+          ),
+          E("div", { className: "detail-grid", style: { marginTop: 14 } },
+            E("div", null, E("div", { className: "k" }, "24H HIGH"), E("div", { className: "v mono-num" }, "$" + fmtUsd(selectedCoin.high_24h))),
+            E("div", null, E("div", { className: "k" }, "24H LOW"), E("div", { className: "v mono-num" }, "$" + fmtUsd(selectedCoin.low_24h))),
+            E("div", null, E("div", { className: "k" }, "MARKET CAP"), E("div", { className: "v mono-num" }, "$" + fmtCompact(selectedCoin.market_cap))),
+            E("div", null, E("div", { className: "k" }, "VOLUME 24H"), E("div", { className: "v mono-num" }, "$" + fmtCompact(selectedCoin.total_volume))),
+            E("div", null, E("div", { className: "k" }, "CIRC SUPPLY"), E("div", { className: "v mono-num" }, fmtCompact(selectedCoin.circulating_supply))),
+            E("div", null, E("div", { className: "k" }, "ATH"), E("div", { className: "v mono-num" }, "$" + fmtUsd(selectedCoin.ath)))
+          ),
+          E("h2", { style: { marginTop: 4 } }, "CHART"),
+          chartError
+            ? E("div", { className: "chart-wrap empty" }, chartError)
+            : E("div", { className: "chart-wrap" }, E(Chart, { chartType, ohlc: chartData })),
+          E(ChartControls, { chartType, setChartType, range: chartRange, setRange: setChartRange }),
+          E(MarketSentiment, {
+            price: selectedCoin.current_price,
+            fiftyTwoWeekHigh: selectedCoin.ath,
+            fiftyTwoWeekLow: selectedCoin.atl,
+            ohlc: chartData,
+            rangeLabel: "ALL-TIME RANGE POSITION",
+            lowLabel: "ATL",
+            highLabel: "ATH"
+          })
+        )
+      : E("div", { className: "empty" }, "SELECT A SECURITY FROM THE WATCHLIST");
+  } else if (tab === "stocks") {
+    detailContent = selectedStockData && !selectedStockData.error
+      ? E("div", null,
+          E("div", { style: { marginBottom: 10 } },
+            E("span", { style: { color: selectedStockData.isIndex ? "var(--amber)" : "var(--cyan)", fontSize: 16, fontWeight: 700 } }, selectedStockData.label),
+            " ",
+            E("span", { style: { color: "var(--dim)" } }, selectedStockData.name)
+          ),
+          E("div", { className: "price-big mono-num" },
+            fmtCcy(selectedStockData.price, selectedStockData.currency),
+            " ",
+            E("span", { style: { fontSize: 15 }, className: selectedStockData.changePct >= 0 ? "up" : "down" },
+              (selectedStockData.changePct >= 0 ? "▲ " : "▼ ") + Math.abs(selectedStockData.changePct || 0).toFixed(2) + "%")
+          ),
+          E("div", { className: "detail-grid", style: { marginTop: 14 } },
+            E("div", null, E("div", { className: "k" }, "PREV CLOSE"), E("div", { className: "v mono-num" }, fmtCcy(selectedStockData.prevClose, selectedStockData.currency))),
+            E("div", null, E("div", { className: "k" }, "CHANGE"), E("div", { className: "v mono-num " + (selectedStockData.change >= 0 ? "up" : "down") }, fmtCcy(selectedStockData.change, selectedStockData.currency))),
+            E("div", null, E("div", { className: "k" }, "DAY HIGH"), E("div", { className: "v mono-num" }, fmtCcy(selectedStockData.high, selectedStockData.currency))),
+            E("div", null, E("div", { className: "k" }, "DAY LOW"), E("div", { className: "v mono-num" }, fmtCcy(selectedStockData.low, selectedStockData.currency)))
+          ),
+          E("h2", { style: { marginTop: 4 } }, "CHART"),
+          E("div", { className: "chart-wrap" }, E(Chart, { chartType, ohlc: stocksChartData })),
+          E(ChartControls, { chartType, setChartType, range: chartRange, setRange: setChartRange }),
+          E(MarketSentiment, {
+            price: selectedStockData.price,
+            fiftyTwoWeekHigh: selectedStockData.fiftyTwoWeekHigh,
+            fiftyTwoWeekLow: selectedStockData.fiftyTwoWeekLow,
+            ohlc: stocksChartData
+          }),
+          E(FundamentalsGrid, { d: selectedStockData, fundamentals, currency: selectedStockData.currency, isInr: false })
+        )
+      : E("div", { className: "empty" }, "SELECT A SECURITY FROM THE WATCHLIST");
+  } else if (tab === "india") {
+    detailContent = selectedIndiaData && !selectedIndiaData.error
+      ? E("div", null,
+          E("div", { style: { marginBottom: 10 } },
+            E("span", { style: { color: selectedIndiaData.isIndex ? "var(--amber)" : "var(--cyan)", fontSize: 16, fontWeight: 700 } }, selectedIndiaData.label),
+            " ",
+            E("span", { style: { color: "var(--dim)" } }, selectedIndiaData.name)
+          ),
+          E("div", { className: "price-big mono-num" },
+            "₹" + fmtInr(selectedIndiaData.price),
+            " ",
+            E("span", { style: { fontSize: 15 }, className: selectedIndiaData.changePct >= 0 ? "up" : "down" },
+              (selectedIndiaData.changePct >= 0 ? "▲ " : "▼ ") + Math.abs(selectedIndiaData.changePct || 0).toFixed(2) + "%")
+          ),
+          E("div", { className: "detail-grid", style: { marginTop: 14 } },
+            E("div", null, E("div", { className: "k" }, "PREV CLOSE"), E("div", { className: "v mono-num" }, "₹" + fmtInr(selectedIndiaData.prevClose))),
+            E("div", null, E("div", { className: "k" }, "CHANGE"), E("div", { className: "v mono-num " + (selectedIndiaData.change >= 0 ? "up" : "down") }, "₹" + fmtInr(selectedIndiaData.change))),
+            E("div", null, E("div", { className: "k" }, "DAY HIGH"), E("div", { className: "v mono-num" }, "₹" + fmtInr(selectedIndiaData.high))),
+            E("div", null, E("div", { className: "k" }, "DAY LOW"), E("div", { className: "v mono-num" }, "₹" + fmtInr(selectedIndiaData.low)))
+          ),
+          E("h2", { style: { marginTop: 4 } }, "CHART"),
+          E("div", { className: "chart-wrap" }, E(Chart, { chartType, ohlc: indiaChartData })),
+          E(ChartControls, { chartType, setChartType, range: chartRange, setRange: setChartRange }),
+          E(MarketSentiment, {
+            price: selectedIndiaData.price,
+            fiftyTwoWeekHigh: selectedIndiaData.fiftyTwoWeekHigh,
+            fiftyTwoWeekLow: selectedIndiaData.fiftyTwoWeekLow,
+            ohlc: indiaChartData
+          }),
+          E(FundamentalsGrid, { d: selectedIndiaData, fundamentals, currency: "INR", isInr: true })
+        )
+      : E("div", { className: "empty" }, "SELECT A SECURITY FROM THE WATCHLIST");
+  } else {
+    detailContent = !selectedSearchResult
+      ? E("div", { className: "empty" }, "SEARCH AND SELECT A RESULT")
+      : searchQuoteError
+        ? E("div", { className: "empty" }, searchQuoteError)
+        : !searchQuote
+          ? E("div", { className: "empty" }, "LOADING...")
+          : E("div", null,
+              E("div", { style: { marginBottom: 10 } },
+                E("span", { style: { color: "var(--cyan)", fontSize: 16, fontWeight: 700 } }, searchQuote.symbol),
+                " ",
+                E("span", { style: { color: "var(--dim)" } }, searchQuote.name + (searchQuote.exchange ? " — " + searchQuote.exchange : ""))
+              ),
+              E("div", { className: "price-big mono-num" },
+                fmtCcy(searchQuote.price, searchQuote.currency),
+                " ",
+                E("span", { style: { fontSize: 15 }, className: searchQuote.changePct >= 0 ? "up" : "down" },
+                  (searchQuote.changePct >= 0 ? "▲ " : "▼ ") + Math.abs(searchQuote.changePct || 0).toFixed(2) + "%")
+              ),
+              E("div", { className: "detail-grid", style: { marginTop: 14 } },
+                E("div", null, E("div", { className: "k" }, "PREV CLOSE"), E("div", { className: "v mono-num" }, fmtCcy(searchQuote.prevClose, searchQuote.currency))),
+                E("div", null, E("div", { className: "k" }, "CHANGE"), E("div", { className: "v mono-num " + (searchQuote.change >= 0 ? "up" : "down") }, fmtCcy(searchQuote.change, searchQuote.currency))),
+                E("div", null, E("div", { className: "k" }, "DAY HIGH"), E("div", { className: "v mono-num" }, fmtCcy(searchQuote.high, searchQuote.currency))),
+                E("div", null, E("div", { className: "k" }, "DAY LOW"), E("div", { className: "v mono-num" }, fmtCcy(searchQuote.low, searchQuote.currency))),
+                E("div", null, E("div", { className: "k" }, "52W HIGH"), E("div", { className: "v mono-num" }, fmtCcy(searchQuote.fiftyTwoWeekHigh, searchQuote.currency))),
+                E("div", null, E("div", { className: "k" }, "52W LOW"), E("div", { className: "v mono-num" }, fmtCcy(searchQuote.fiftyTwoWeekLow, searchQuote.currency)))
+              ),
+              E("h2", { style: { marginTop: 4 } }, "CHART"),
+              E("div", { className: "chart-wrap" }, E(Chart, { chartType, ohlc: searchChartData })),
+              E(ChartControls, { chartType, setChartType, range: chartRange, setRange: setChartRange }),
+              E(MarketSentiment, {
+                price: searchQuote.price,
+                fiftyTwoWeekHigh: searchQuote.fiftyTwoWeekHigh,
+                fiftyTwoWeekLow: searchQuote.fiftyTwoWeekLow,
+                ohlc: searchChartData
+              }),
+              E(FundamentalsGrid, { d: searchQuote, fundamentals, currency: searchQuote.currency, isInr: false })
+            );
+  }
+
+  const detailPanelEl = E("div", { className: "panel" },
+    E("h2", { style: { display: "flex", alignItems: "center" } },
+      "SECURITY DETAIL",
+      E(MarketBadge, { status: marketStatus })
+    ),
+    detailContent
+  );
+
+  const newsContent = newsLoading
+    ? E("div", { className: "empty" }, "LOADING NEWS...")
+    : newsError
+      ? E("div", { className: "empty" }, newsError)
+      : news.length === 0
+        ? E("div", { className: "empty" }, "NO NEWS FOUND")
+        : E("div", { className: "news-list" },
+            news.map((n, i) =>
+              E("a", {
+                key: n.uuid || i,
+                className: "news-item",
+                href: n.link,
+                target: "_blank",
+                rel: "noopener noreferrer"
+              },
+                E("div", { className: "news-title" }, n.title),
+                E("div", { className: "news-meta" },
+                  (n.publisher || "") + (n.providerPublishTime ? " — " + timeAgo(n.providerPublishTime) : "")
+                )
+              )
+            )
+          );
+
+  const newsPanelEl = E("div", { className: "panel", style: { flex: "1 1 0" } },
+    E("h2", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
+      E("span", null, "MARKET NEWS" + (newsQuery && newsQuery !== "stock market" ? " — " + newsQuery.toUpperCase() : "")),
+      E("span", { style: { display: "flex", alignItems: "center", gap: 8 } },
+        newsLastFetch
+          ? E("span", { style: { color: "var(--dim)", fontSize: 9, fontWeight: 400 } },
+              "UPDATED " + newsLastFetch.toLocaleTimeString()
+            )
+          : null,
+        E("span", {
+          style: { cursor: "pointer", color: "var(--amber)", fontSize: 10, fontWeight: 700, border: "1px solid var(--amber)", padding: "1px 6px" },
+          onClick: () => fetchNews(newsQuery, newsFallback, newsTickerFilter),
+          title: "Refresh news"
+        }, newsLoading ? "..." : "↻ REFRESH")
+      )
+    ),
+    newsContent
+  );
+
+  const heatmapPanelEl = E("div", { className: "panel", style: { flex: "1 1 0" } },
+    E("h2", null, "SECTOR HEATMAP — 24H"),
+    categoriesLoading
+      ? E("div", { className: "empty" }, "LOADING...")
+      : categoriesError
+        ? E("div", { className: "empty" }, categoriesError)
+        : categories.length === 0
+          ? E("div", { className: "empty" }, "NO DATA AVAILABLE")
+          : E("div", { className: "heatmap-grid" },
+              categories.map((cat) => {
+                const chg = cat.market_cap_change_24h || 0;
+                const intensity = Math.min(Math.abs(chg) / 3, 1);
+                const bg = chg >= 0
+                  ? `rgba(0,255,102,${0.2 + intensity * 0.6})`
+                  : `rgba(255,59,59,${0.2 + intensity * 0.6})`;
+                return E("div", { key: cat.id, className: "heat-cell", style: { background: bg } },
+                  E("span", { className: "hc-name" }, cat.name),
+                  E("span", { className: "hc-chg" }, (chg >= 0 ? "+" : "") + chg.toFixed(2) + "%")
+                );
+              })
+            )
+  );
+
+  const tradeFormEl = !currentAssetForTrade
+    ? E("div", { className: "empty" }, "SELECT A SECURITY IN CRYPTO, INTERNATIONAL STOCKS, OR INDIA TO TRADE")
+    : E("div", { className: "trade-form" },
+        E("div", { className: "trade-asset" },
+          "TRADING: ",
+          E("span", { style: { color: "var(--cyan)" } }, currentAssetForTrade.label),
+          " @ ",
+          E("span", { className: "mono-num" }, fmtCcy(currentAssetForTrade.price, currentAssetForTrade.currency))
+        ),
+        E("div", { className: "trade-kind-tabs" },
+          ["SPOT", "FUTURE", "OPTION"].map((k) =>
+            E("span", {
+              key: k,
+              className: "chart-toggle" + (tradeKind === k ? " active" : ""),
+              onClick: () => { setTradeKind(k); setTradeError(null); }
+            }, k)
+          )
+        ),
+        tradeKind === "FUTURE"
+          ? E("div", { className: "trade-row" },
+              E("select", { value: tradeSide, onChange: (e) => setTradeSide(e.target.value) },
+                E("option", { value: "LONG" }, "LONG"),
+                E("option", { value: "SHORT" }, "SHORT")
+              ),
+              E("select", { value: tradeLeverage, onChange: (e) => setTradeLeverage(parseFloat(e.target.value)) },
+                [1, 2, 5, 10].map((lv) => E("option", { key: lv, value: lv }, lv + "x"))
+              )
+            )
+          : null,
+        tradeKind === "OPTION"
+          ? E("div", { className: "trade-row" },
+              E("select", { value: tradeOptionType, onChange: (e) => setTradeOptionType(e.target.value) },
+                E("option", { value: "CALL" }, "CALL"),
+                E("option", { value: "PUT" }, "PUT")
+              ),
+              E("input", {
+                placeholder: "STRIKE",
+                value: tradeStrike,
+                onChange: (e) => setTradeStrike(e.target.value)
+              }),
+              E("select", { value: tradeExpiryDays, onChange: (e) => setTradeExpiryDays(parseFloat(e.target.value)) },
+                [7, 14, 30, 60, 90].map((d) => E("option", { key: d, value: d }, d + "D"))
+              )
+            )
+          : null,
+        E("div", { className: "trade-row" },
+          E("input", { placeholder: "QTY", value: tradeQty, onChange: (e) => setTradeQty(e.target.value) }),
+          E("button", { onClick: openPosition }, tradeKind === "OPTION" ? "BUY OPTION" : tradeKind === "FUTURE" ? "OPEN FUTURE" : "BUY"),
+          tradeKind === "SPOT"
+            ? E("button", { onClick: sellSpot, className: "trade-sell-btn" }, "SELL")
+            : null
+        ),
+        tradeError ? E("div", { className: "trade-error" }, tradeError) : null
+      );
+
+  const positionsListEl = positionsWithValue.length === 0
+    ? E("div", { className: "empty" }, "NO OPEN POSITIONS")
+    : E("div", { className: "pf-list" },
+        positionsWithValue.map((p) =>
+          E("div", { className: "pos-row", key: p.id },
+            E("div", null,
+              E("span", { className: "pos-kind" }, p.kind),
+              " ",
+              E("span", { style: { color: "var(--cyan)" } }, p.label),
+              " ",
+              E("span", { style: { color: "var(--dim)", fontSize: 10 } },
+                p.kind === "OPTION"
+                  ? p.optionType + " " + p.strike + " x" + p.qty
+                  : p.kind === "FUTURE"
+                    ? p.side + " " + p.leverage + "x x" + p.qty
+                    : "x" + p.qty
+              )
+            ),
+            E("div", { className: "pos-row-bottom" },
+              E("span", { className: "mono-num" }, p.value !== null ? "₹" + fmtInr(p.value) : "--"),
+              p.pnlPct !== null
+                ? E("span", { className: "mono-num " + (p.pnl >= 0 ? "up" : "down"), style: { marginLeft: 6 } },
+                    "(" + (p.pnl >= 0 ? "+" : "") + p.pnlPct.toFixed(1) + "%)"
+                  )
+                : null,
+              E("span", { className: "pf-rm", onClick: () => closePosition(p.id) }, p.kind === "SPOT" ? "SELL" : "CLOSE")
+            )
+          )
+        )
+      );
+
+  const portfolioPanelEl = E("div", { className: "panel", style: { flex: "1.4 1 0" } },
+    E("h2", null, "PAPER TRADING"),
+    E("div", { className: "acct-summary" },
+      E("div", { className: "acct-cell" }, E("div", { className: "k" }, "CASH"), E("div", { className: "v mono-num" }, "₹" + fmtInr(cashInr))),
+      E("div", { className: "acct-cell" }, E("div", { className: "k" }, "POSITIONS"), E("div", { className: "v mono-num" }, "₹" + fmtInr(positionsValueTotal))),
+      E("div", { className: "acct-cell" },
+        E("div", { className: "k" }, "TOTAL P&L"),
+        E("div", { className: "v mono-num " + (portfolioPnl >= 0 ? "up" : "down") }, (portfolioPnl >= 0 ? "+" : "") + "₹" + fmtInr(portfolioPnl))
+      )
+    ),
+    tradeFormEl,
+    E("div", { className: "india-section-label" }, "OPEN POSITIONS"),
+    positionsListEl,
+    E("div", { className: "sentiment-disclaimer" }, "Paper trading with virtual currency — no real trades are placed. Futures are leveraged spot; options use a simplified Black-Scholes estimate, not real market premiums.")
+  );
+
+  const sidebarEl = E("div", { className: "sidebar" }, newsPanelEl, heatmapPanelEl, portfolioPanelEl);
+
+  const bodyEl = E("div", { className: "body" }, watchlistPanelEl, detailPanelEl, sidebarEl);
+
+  const statusSource = tab === "crypto" ? "COINGECKO API"
+    : tab === "stocks" ? "YAHOO FINANCE (VIA LOCAL PROXY)"
+    : tab === "india" ? "YAHOO FINANCE (VIA LOCAL PROXY)"
+    : "YAHOO FINANCE SEARCH (VIA LOCAL PROXY)";
+  const statusErr = tab === "crypto" ? error : tab === "stocks" ? stocksError : tab === "india" ? indiaError : (searchQuoteError || searchError);
+  const statusUpdate = tab === "crypto" ? lastUpdate : tab === "stocks" ? stocksLastUpdate : tab === "india" ? indiaLastUpdate : null;
+
+  const statusBarEl = E("div", { className: "statusbar" },
+    E("span", null,
+      "DATA SOURCE: " + statusSource + " ",
+      statusErr
+        ? E("span", { className: "err" }, "— ERROR: " + statusErr)
+        : E("span", { className: "ok" }, "— LIVE")
+    ),
+    E("span", null,
+      "LAST UPDATE: ",
+      statusUpdate ? statusUpdate.toLocaleTimeString() : "--"
+    )
+  );
+
+  return E("div", { className: "terminal" },
+    topbarEl,
+    cmdbarEl,
+    indicesBarEl,
+    tickerTapeEl,
+    bodyEl,
+    E(MarketSummaryBar, { india, stocks, coins, global }),
+    statusBarEl
+  );
+}
+
+const root = createRoot(document.getElementById("root"));
+root.render(E(App, null));
+</script>
+</body>
+</html>
