@@ -2453,22 +2453,7 @@ function App({ onLogout }) {
       }),
       E("span", null, "BLOOMYCO.IN")
     ),
-    E(Clock, null),
-    E("button", {
-      onClick: onLogout,
-      style: {
-        background: "transparent",
-        border: "1px solid #000",
-        color: "#000",
-        fontFamily: "inherit",
-        fontSize: "10px",
-        fontWeight: "700",
-        letterSpacing: "1px",
-        padding: "3px 8px",
-        cursor: "pointer",
-        opacity: "0.7"
-      }
-    }, "LOGOUT")
+    E(Clock, null)
   );
 
   const computeCmdSuggestions = useCallback((val) => {
@@ -3201,7 +3186,12 @@ function App({ onLogout }) {
     E("span", null,
       "LAST UPDATE: ",
       statusUpdate ? statusUpdate.toLocaleTimeString() : "--"
-    )
+    ),
+    E("span", {
+      onClick: onLogout,
+      style: { cursor: "pointer", color: "var(--dim)", letterSpacing: "1px" },
+      title: "Log out"
+    }, "[ LOGOUT ]")
   );
 
   return E("div", { className: "terminal" },
