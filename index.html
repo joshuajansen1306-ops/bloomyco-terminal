@@ -1844,8 +1844,11 @@ function DisclaimerScreen({ onAccept }) {
   }},
     E(LoginBackground, null),
     E("div", { style: {
+      position: "relative", zIndex: 2,
       border: "1px solid #ff9900", maxWidth: 680, width: "100%",
-      background: "#0a0a0a", padding: "36px 40px"
+      background: "rgba(6,5,0,0.92)", padding: "36px 40px",
+      animation: "fadeIn 0.4s ease",
+      boxShadow: "0 0 24px rgba(255,153,0,0.3)"
     }},
       E("div", { style: { color: "#ff9900", fontSize: 10, letterSpacing: 3, marginBottom: 24, opacity: 0.7 } },
         "BLOOMYCO.IN  ·  IMPORTANT NOTICE"
