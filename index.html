@@ -1771,7 +1771,7 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
           )
         );
 
-  return E("div", { style: { display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", background: "var(--bg)" } },
+  return E("div", { style: { display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden", background: "var(--bg)" } },
     E("div", { style: { background: "var(--panel)", borderBottom: "1px solid var(--border)", padding: "8px 14px", display: "flex", alignItems: "center", gap: 12, flexShrink: 0, flexWrap: "wrap" } },
       E("button", { onClick: onBack, style: { background: "transparent", border: "1px solid var(--amber)", color: "var(--amber)", fontFamily: "inherit", fontSize: 11, fontWeight: 700, letterSpacing: 1, padding: "3px 10px", cursor: "pointer", whiteSpace: "nowrap" } }, "← BACK"),
       E("span", { style: { color: "var(--cyan)", fontSize: 17, fontWeight: 700 } }, label),
@@ -3481,7 +3481,7 @@ function App({ onLogout }) {
     return E("div", { className: "terminal" },
       topbarEl,
       tickerTapeEl,
-      E("div", { style: { flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" } },
+      E("div", { style: { flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" } },
         E(StockDetailPage, {
           symbol: detailView.symbol,
           source: detailView.source,
