@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <title>Bloomyco.in</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <style>
   :root {
     --bg: #000000;
@@ -17,7 +17,7 @@
     --dim: #6b6b6b;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; background: var(--bg); }
+  html, body { margin: 0; padding: 0; background: var(--bg); overflow-x: hidden; }
   body {
     font-family: "IBM Plex Mono", "Consolas", "Courier New", monospace;
     color: var(--text);
@@ -30,6 +30,8 @@
     display: flex;
     flex-direction: column;
     height: 100vh;
+    width: 100%;
+    max-width: 100vw;
   }
 
   .topbar {
@@ -550,9 +552,9 @@
     .terminal { height: auto; min-height: 100dvh; }
 
     /* Topbar */
-    .topbar { padding: 6px 10px; font-size: 11px; flex-wrap: nowrap; }
+    .topbar { padding: 6px 10px; font-size: 11px; flex-wrap: nowrap; width: 100%; }
     .site-logo { height: 18px; }
-    .topbar .clock { font-size: 10px; }
+    .topbar .clock { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
 
     /* CMD bar — 16px prevents iOS auto-zoom */
     .cmdbar { padding: 6px 10px; }
