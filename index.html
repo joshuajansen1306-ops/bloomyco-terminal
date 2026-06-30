@@ -497,6 +497,105 @@
   .cmd-sug-name { color: var(--dim); font-size: 11px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cmd-hint { color: var(--dim); font-size: 10px; padding: 6px 12px; font-style: italic; }
 
+  /* ── LOGIN SCREEN ────────────────────────────────────────────────────────── */
+  .login-screen {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 20px;
+  }
+  .login-box {
+    background: #0a0a0a;
+    border: 1px solid var(--amber);
+    padding: 36px 32px 28px;
+    width: 100%;
+    max-width: 400px;
+  }
+  .login-logo {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  .login-logo h1 {
+    color: var(--amber);
+    font-size: 20px;
+    letter-spacing: 4px;
+    margin: 12px 0 5px;
+    font-family: inherit;
+  }
+  .login-subtitle {
+    color: var(--dim);
+    font-size: 10px;
+    letter-spacing: 2px;
+    margin: 0;
+  }
+  .login-divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 0 0 24px;
+  }
+  .login-field {
+    margin-bottom: 16px;
+  }
+  .login-field label {
+    display: block;
+    color: var(--amber);
+    font-size: 10px;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .login-field input {
+    width: 100%;
+    background: #000;
+    border: 1px solid var(--border);
+    color: var(--green);
+    font-family: inherit;
+    font-size: 14px;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+  }
+  .login-field input:focus { border-color: var(--amber); }
+  .login-field input::placeholder { color: var(--dim); }
+  .login-error {
+    color: var(--red);
+    font-size: 11px;
+    margin-bottom: 10px;
+    letter-spacing: 0.5px;
+  }
+  .login-btn {
+    width: 100%;
+    background: var(--amber);
+    color: #000;
+    border: none;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    padding: 13px;
+    cursor: pointer;
+    margin-top: 4px;
+    transition: opacity 0.2s;
+  }
+  .login-btn:hover { opacity: 0.85; }
+  .login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .login-note {
+    color: var(--dim);
+    font-size: 10px;
+    text-align: center;
+    margin: 20px 0 0;
+    letter-spacing: 0.5px;
+    line-height: 1.6;
+  }
+  .login-ticker {
+    font-size: 28px;
+    margin-bottom: 4px;
+  }
+
   /* ── RESPONSIVE / CROSS-DEVICE ───────────────────────────────────────────── */
 
   /* Base touch improvements (all devices) */
@@ -1299,6 +1398,83 @@ function MarketSummaryBar({ india, stocks, coins, global }) {
     ),
     narrative ? E("div", { className: "summary-text" }, narrative) : null
   );
+}
+
+function LoginScreen({ onLogin }) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (ev) => {
+    ev.preventDefault();
+    const n = name.trim();
+    const em = email.trim().toLowerCase();
+    if (!n) { setError("NAME IS REQUIRED"); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { setError("ENTER A VALID EMAIL ADDRESS"); return; }
+    setLoading(true);
+    setError("");
+    try {
+      await fetch(LOCAL_PROXY_BASE + "/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: n, email: em })
+      });
+    } catch (_) {}
+    localStorage.setItem("bloomyco_user", JSON.stringify({ name: n, email: em, ts: Date.now() }));
+    setLoading(false);
+    onLogin({ name: n, email: em });
+  };
+
+  return E("div", { className: "login-screen" },
+    E("div", { className: "login-box" },
+      E("div", { className: "login-logo" },
+        E("div", { className: "login-ticker" }, "₿"),
+        E("h1", null, "BLOOMYCO.IN"),
+        E("p", { className: "login-subtitle" }, "FINANCIAL TERMINAL · ACCESS PORTAL")
+      ),
+      E("hr", { className: "login-divider" }),
+      E("form", { onSubmit: handleSubmit },
+        E("div", { className: "login-field" },
+          E("label", null, "FULL NAME"),
+          E("input", {
+            type: "text",
+            value: name,
+            onChange: ev => setName(ev.target.value),
+            placeholder: "John Doe",
+            autoFocus: true,
+            autoComplete: "name"
+          })
+        ),
+        E("div", { className: "login-field" },
+          E("label", null, "GOOGLE EMAIL"),
+          E("input", {
+            type: "email",
+            value: email,
+            onChange: ev => setEmail(ev.target.value),
+            placeholder: "yourname@gmail.com",
+            autoComplete: "email"
+          })
+        ),
+        error ? E("div", { className: "login-error" }, "⚠ " + error) : null,
+        E("button", { type: "submit", className: "login-btn", disabled: loading },
+          loading ? "CONNECTING..." : "ENTER TERMINAL ▶"
+        )
+      ),
+      E("p", { className: "login-note" },
+        "Your access is saved on this device.", E("br", null),
+        "You will not be asked again."
+      )
+    )
+  );
+}
+
+function AppWrapper() {
+  const [user, setUser] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("bloomyco_user")); } catch (_) { return null; }
+  });
+  if (!user) return E(LoginScreen, { onLogin: setUser });
+  return E(App, null);
 }
 
 function App() {
@@ -2942,7 +3118,7 @@ function App() {
 }
 
 const root = createRoot(document.getElementById("root"));
-root.render(E(App, null));
+root.render(E(AppWrapper, null));
 </script>
 </body>
 </html>

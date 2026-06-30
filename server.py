@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import time
+import datetime
 import urllib.request
 import urllib.error
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -14,6 +15,7 @@ except ImportError:
 
 import os
 PORT = int(os.environ.get("PORT", 4173))
+SHEETS_WEBHOOK = os.environ.get("SHEETS_WEBHOOK", "")
 YAHOO_BASE = "https://query1.finance.yahoo.com/v8/finance/chart/"
 YAHOO_SEARCH = "https://query1.finance.yahoo.com/v1/finance/search"
 
@@ -148,6 +150,51 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
+
+    def do_POST(self):
+        parsed = urlparse(self.path)
+        if parsed.path == "/api/register":
+            self.handle_register()
+            return
+        self.send_json_error(404, "not found")
+
+    def handle_register(self):
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+            body = json.loads(self.rfile.read(length))
+            name = str(body.get("name", "")).strip()
+            email = str(body.get("email", "")).strip().lower()
+            ts = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+            print(f"[REGISTER] {ts} | {name} | {email}", flush=True)
+
+            # Forward to Google Sheets webhook if configured
+            if SHEETS_WEBHOOK:
+                payload = json.dumps({"name": name, "email": email, "timestamp": ts}).encode()
+                req = urllib.request.Request(
+                    SHEETS_WEBHOOK,
+                    data=payload,
+                    headers={"Content-Type": "application/json"},
+                    method="POST"
+                )
+                urllib.request.urlopen(req, timeout=6)
+
+            resp = json.dumps({"ok": True}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Content-Length", str(len(resp)))
+            self.end_headers()
+            self.wfile.write(resp)
+        except Exception as ex:
+            print(f"[REGISTER ERROR] {ex}", flush=True)
+            self.send_json_error(500, str(ex))
 
     def log_message(self, format, *args):
         pass
