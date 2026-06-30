@@ -50,8 +50,33 @@
     font-size: 12px;
   }
   .topbar .clock { font-weight: 700; }
-  .topbar-brand { display: flex; align-items: center; gap: 8px; }
+  .topbar-brand {
+    display: flex; align-items: center; gap: 8px; cursor: pointer;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+  .topbar-brand:hover { opacity: 0.75; transform: translateY(-1px); }
+  .topbar-brand:active { transform: translateY(0); opacity: 0.6; }
   .site-logo { height: 22px; width: auto; display: block; }
+  .topbar-btn {
+    background: rgba(0,0,0,0.08);
+    border: 1px solid rgba(0,0,0,0.55);
+    color: #000;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 4px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    border-radius: 2px;
+    transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .topbar-btn:hover {
+    background: rgba(0,0,0,0.22);
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.55);
+    transform: translateY(-1px);
+  }
+  .topbar-btn:active { transform: translateY(0); background: rgba(0,0,0,0.32); }
 
   .cmdbar {
     display: flex;
@@ -2919,7 +2944,7 @@ function App({ onLogout, user }) {
     E("div", {
       className: "topbar-brand",
       onClick: () => window.location.reload(),
-      style: { cursor: "pointer" }
+      title: "Back to home"
     },
       E("img", {
         src: `${LOCAL_PROXY_BASE}/logo.png`,
@@ -2930,38 +2955,8 @@ function App({ onLogout, user }) {
       E("span", null, "BLOOMYCO.IN")
     ),
     E("div", { style: { display: "flex", alignItems: "center", gap: "10px" } },
-      E("button", {
-        onClick: () => setShowFeedback(true),
-        style: {
-          background: "transparent",
-          border: "1px solid rgba(0,0,0,0.5)",
-          color: "#000",
-          fontFamily: "inherit",
-          fontSize: "10px",
-          fontWeight: "700",
-          letterSpacing: "1px",
-          padding: "2px 7px",
-          cursor: "pointer",
-          opacity: "0.7",
-          whiteSpace: "nowrap"
-        }
-      }, "FEEDBACK"),
-      E("button", {
-        onClick: onLogout,
-        style: {
-          background: "transparent",
-          border: "1px solid rgba(0,0,0,0.5)",
-          color: "#000",
-          fontFamily: "inherit",
-          fontSize: "10px",
-          fontWeight: "700",
-          letterSpacing: "1px",
-          padding: "2px 7px",
-          cursor: "pointer",
-          opacity: "0.7",
-          whiteSpace: "nowrap"
-        }
-      }, "LOGOUT"),
+      E("button", { className: "topbar-btn", onClick: () => setShowFeedback(true) }, "FEEDBACK"),
+      E("button", { className: "topbar-btn", onClick: onLogout }, "LOGOUT"),
       E(Clock, null)
     )
   );
