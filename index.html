@@ -494,6 +494,104 @@
   .cmd-sug-label { color: var(--cyan); font-weight: 700; min-width: 80px; }
   .cmd-sug-name { color: var(--dim); font-size: 11px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cmd-hint { color: var(--dim); font-size: 10px; padding: 6px 12px; font-style: italic; }
+
+  /* ── MOBILE ──────────────────────────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    body { font-size: 12px; }
+
+    /* Prevent 100vh address-bar issues on iOS */
+    .terminal { height: auto; min-height: 100dvh; }
+
+    /* Topbar: compact */
+    .topbar { padding: 6px 10px; font-size: 11px; gap: 6px; flex-wrap: wrap; }
+    .topbar-brand { gap: 5px; }
+    .site-logo { height: 18px; }
+    .topbar .clock { font-size: 10px; }
+
+    /* CMD bar: full width input, bigger touch target */
+    .cmdbar { padding: 8px 10px; }
+    .cmdbar input { font-size: 14px; padding: 8px 10px; }
+
+    /* Main body: single column stack */
+    .body {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto;
+      height: auto;
+      overflow: visible;
+    }
+
+    /* Ticker tape: slightly larger text */
+    .ticker-tape { padding: 8px 0; }
+    .ticker-item { font-size: 12px; padding: 0 18px; }
+
+    /* Panels: full width, auto height */
+    .panel { overflow: visible; }
+    .sidebar { overflow: visible; }
+    .sidebar .panel { flex: none; min-height: auto; }
+
+    /* Tabs: scroll horizontally */
+    .tabs { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; }
+    .tab { white-space: nowrap; padding: 6px 14px; font-size: 12px; flex-shrink: 0; }
+
+    /* Index blocks: 2 columns instead of 3 */
+    .index-blocks { grid-template-columns: 1fr 1fr; }
+    .index-card .ic-price { font-size: 15px; }
+
+    /* Big price: smaller on mobile */
+    .price-big { font-size: 20px; }
+
+    /* Detail grid: 2 columns stays fine */
+    .detail-grid { grid-template-columns: 1fr 1fr; gap: 5px 10px; }
+
+    /* Chart: taller on mobile for readability */
+    .chart-wrap svg { height: 220px; }
+    .chart-controls { gap: 8px; }
+    .chart-toggle { padding: 5px 10px; font-size: 11px; }
+
+    /* Sentiment: 2 columns */
+    .sentiment-grid { grid-template-columns: 1fr 1fr; }
+
+    /* Market summary: 2 columns */
+    .summary-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    /* Tables: horizontal scroll */
+    .panel > table { display: block; overflow-x: auto; }
+
+    /* Heatmap: 2 columns stays fine */
+    .heatmap-grid { grid-template-columns: 1fr 1fr; }
+
+    /* Account summary: 3 cols → 2 cols */
+    .acct-summary { grid-template-columns: 1fr 1fr; }
+
+    /* Portfolio form: stack */
+    .pf-form { flex-wrap: wrap; }
+    .pf-form select, .pf-form input { flex: 1 1 100%; }
+
+    /* Status bar: smaller */
+    .statusbar { font-size: 10px; padding: 4px 10px; flex-wrap: wrap; gap: 4px; }
+
+    /* Make all buttons/tappable things bigger */
+    .tab, .chart-toggle, .pf-form button, .trade-row button { min-height: 36px; }
+
+    /* News: slightly more spacing for touch */
+    .news-item { padding: 10px 0; }
+    .news-title { font-size: 13px; }
+
+    /* Indices bar scrolls naturally */
+    .indices-bar { gap: 14px; padding: 6px 10px; }
+    .idx-item { font-size: 12px; }
+
+    /* Summary bar */
+    .summary-bar { padding: 10px; }
+    .summary-col { padding-left: 8px; }
+  }
+
+  @media (max-width: 400px) {
+    .index-blocks { grid-template-columns: 1fr; }
+    .summary-grid { grid-template-columns: 1fr; }
+    .sentiment-grid { grid-template-columns: 1fr 1fr; }
+    .price-big { font-size: 18px; }
+  }
 </style>
 </head>
 <body>
