@@ -2601,7 +2601,25 @@ function App({ onLogout }) {
       }),
       E("span", null, "BLOOMYCO.IN")
     ),
-    E(Clock, null)
+    E("div", { style: { display: "flex", alignItems: "center", gap: "10px" } },
+      E("button", {
+        onClick: onLogout,
+        style: {
+          background: "transparent",
+          border: "1px solid rgba(0,0,0,0.5)",
+          color: "#000",
+          fontFamily: "inherit",
+          fontSize: "10px",
+          fontWeight: "700",
+          letterSpacing: "1px",
+          padding: "2px 7px",
+          cursor: "pointer",
+          opacity: "0.7",
+          whiteSpace: "nowrap"
+        }
+      }, "LOGOUT"),
+      E(Clock, null)
+    )
   );
 
   const computeCmdSuggestions = useCallback((val) => {
@@ -3344,8 +3362,7 @@ function App({ onLogout }) {
     tickerTapeEl,
     bodyEl,
     E(MarketSummaryBar, { india, stocks, coins, global }),
-    statusBarEl,
-    E("button", { className: "logout-btn", onClick: onLogout }, "LOGOUT")
+    statusBarEl
   );
 }
 
