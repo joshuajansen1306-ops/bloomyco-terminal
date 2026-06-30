@@ -1285,20 +1285,25 @@ function FundamentalsGrid({ d, fundamentals, currency, isInr }) {
     { k: "52W LOW",         v: fmt(w52Low) },
     { k: "% FROM 52W HIGH", v: pctFromHigh != null ? E("span", { className: pctFromHigh >= 0 ? "up" : "down" }, (pctFromHigh >= 0 ? "+" : "") + pctFromHigh.toFixed(2) + "%") : "--" },
     { k: "% FROM 52W LOW",  v: pctFromLow  != null ? E("span", { className: pctFromLow  >= 0 ? "up" : "down" }, "+" + pctFromLow.toFixed(2)  + "%") : "--" },
-    { k: "VOLUME",          v: volume  != null ? fmtCompact(volume)  : "--" },
-    { k: "AVG VOL 3M",      v: avgVol  != null ? fmtCompact(avgVol)  : "--" },
-    { k: "MARKET CAP",      v: mktCap  != null ? ccyPrefix + fmtCompact(mktCap) : "--" },
-    { k: "P/E (TTM)",       v: pe      != null ? pe.toFixed(2)        : "--" },
-    { k: "P/E (FWD)",       v: fwdPE   != null ? fwdPE.toFixed(2)     : "--" },
-    { k: "EPS (TTM)",       v: eps     != null ? fmt(eps)             : "--" },
-    { k: "BETA",            v: beta    != null ? beta.toFixed(2)       : "--" },
-    { k: "DIV YIELD",       v: divYield!= null ? divYield.toFixed(2) + "%" : "--" },
-    { k: "PRICE/BOOK",      v: pb      != null ? pb.toFixed(2)         : "--" },
   ];
+  if (!d.isIndex) {
+    rows.push(
+      { k: "VOLUME",          v: volume  != null ? fmtCompact(volume)  : "--" },
+      { k: "AVG VOL 3M",      v: avgVol  != null ? fmtCompact(avgVol)  : "--" },
+      { k: "MARKET CAP",      v: mktCap  != null ? ccyPrefix + fmtCompact(mktCap) : "--" },
+      { k: "P/E (TTM)",       v: pe      != null ? pe.toFixed(2)        : "--" },
+      { k: "P/E (FWD)",       v: fwdPE   != null ? fwdPE.toFixed(2)     : "--" },
+      { k: "EPS (TTM)",       v: eps     != null ? fmt(eps)             : "--" },
+      { k: "BETA",            v: beta    != null ? beta.toFixed(2)       : "--" },
+      { k: "DIV YIELD",       v: divYield!= null ? divYield.toFixed(2) + "%" : "--" },
+      { k: "PRICE/BOOK",      v: pb      != null ? pb.toFixed(2)         : "--" }
+    );
+  }
   return E("div", { style: { marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border)" } },
     E("div", { style: { color: "var(--amber)", fontSize: 11, fontWeight: 700, letterSpacing: 1, marginBottom: 8 } },
-      "FUNDAMENTALS", fundamentals ? null : E("span", { style: { color: "var(--dim)", fontWeight: 400, marginLeft: 8 } }, "LOADING...")
+      "FUNDAMENTALS", (fundamentals || d.isIndex) ? null : E("span", { style: { color: "var(--dim)", fontWeight: 400, marginLeft: 8 } }, "LOADING...")
     ),
+    d.isIndex && E("div", { style: { color: "var(--dim)", fontSize: 11, marginBottom: 8 } }, "Per-share metrics (P/E, EPS, market cap, etc.) don't apply to an index."),
     E("div", { className: "detail-grid", style: { gridTemplateColumns: "1fr 1fr", gap: "6px 14px" } },
       rows.map((r, i) =>
         E("div", { key: i },
