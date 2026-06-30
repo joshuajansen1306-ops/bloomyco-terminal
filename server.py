@@ -177,12 +177,14 @@ class Handler(SimpleHTTPRequestHandler):
             # Save to Google Sheets via Apps Script webhook (Name, Email ID, Timestamp)
             if SHEETS_WEBHOOK:
                 payload = json.dumps({"name": name, "email": email, "timestamp": ts}).encode()
+                # Google Apps Script redirects POSTs — follow redirect manually
+                opener = urllib.request.build_opener(urllib.request.HTTPRedirectHandler())
                 req = urllib.request.Request(
                     SHEETS_WEBHOOK, data=payload,
                     headers={"Content-Type": "application/json"},
                     method="POST"
                 )
-                urllib.request.urlopen(req, timeout=8)
+                opener.open(req, timeout=8)
 
             resp = json.dumps({"ok": True}).encode()
             self.send_response(200)
