@@ -246,7 +246,7 @@ class Handler(SimpleHTTPRequestHandler):
             name  = str(body.get("name",  "")).strip()
             email = str(body.get("email", "")).strip().lower()
             ip    = self.get_client_ip()
-            ts    = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+            ts    = (datetime.datetime.utcnow() + datetime.timedelta(hours=5, minutes=30)).strftime("%Y-%m-%d %H:%M:%S IST")
             print(f"[REGISTER] {ts} | {name} | {email} | {ip}", flush=True)
 
             # Save to Google Sheets via Apps Script (GET with params — more reliable)
@@ -277,7 +277,7 @@ class Handler(SimpleHTTPRequestHandler):
             if not message:
                 self.send_json_error(400, "missing message")
                 return
-            ts = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+            ts = (datetime.datetime.utcnow() + datetime.timedelta(hours=5, minutes=30)).strftime("%Y-%m-%d %H:%M:%S IST")
             print(f"[FEEDBACK] {ts} | {email} | {phone} | {ip} | {message[:120]}", flush=True)
 
             if SHEETS_WEBHOOK:
@@ -311,7 +311,7 @@ class Handler(SimpleHTTPRequestHandler):
             email  = str(body.get("email", "")).strip().lower()
             dur    = int(body.get("duration_seconds", 0))
             ip     = self.get_client_ip()
-            ts     = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+            ts     = (datetime.datetime.utcnow() + datetime.timedelta(hours=5, minutes=30)).strftime("%Y-%m-%d %H:%M:%S IST")
             mins, secs = divmod(dur, 60)
             hrs,  mins = divmod(mins, 60)
             dur_fmt = f"{hrs}h {mins}m {secs}s" if hrs else f"{mins}m {secs}s"
