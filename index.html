@@ -3452,9 +3452,9 @@ function App({ onLogout, user }) {
   const watchlistPanelEl = E("div", { className: "panel" },
     E("div", { className: "tabs" },
       E("span", { className: "tab" + (tab === "india" ? " active" : ""), onClick: () => setTab("india") }, "INDIA"),
+      E("span", { className: "tab" + (tab === "commodities" ? " active" : ""), onClick: () => setTab("commodities") }, "COMMODITIES"),
       E("span", { className: "tab" + (tab === "stocks" ? " active" : ""), onClick: () => setTab("stocks") }, "INTERNATIONAL STOCKS"),
       E("span", { className: "tab" + (tab === "crypto" ? " active" : ""), onClick: () => setTab("crypto") }, "CRYPTO"),
-      E("span", { className: "tab" + (tab === "commodities" ? " active" : ""), onClick: () => setTab("commodities") }, "COMMODITIES"),
       E("span", { className: "tab" + (tab === "search" ? " active" : ""), onClick: () => setTab("search") }, "SEARCH")
     ),
     tab === "crypto" ? watchlistContent
