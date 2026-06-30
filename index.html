@@ -1926,7 +1926,7 @@ function DisclaimerScreen({ onAccept }) {
   );
 }
 
-function FeedbackModal({ onClose, userEmail }) {
+function FeedbackModal({ onClose, userEmail, userName }) {
   const [message, setMessage] = useState("");
   const [phone, setPhone] = useState("");
   const [status, setStatus] = useState("idle"); // idle | sending | sent | error
@@ -1938,7 +1938,7 @@ function FeedbackModal({ onClose, userEmail }) {
       const res = await fetch(`${window.location.origin}/api/feedback`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: message.trim(), phone: phone.trim(), email: userEmail || "" })
+        body: JSON.stringify({ message: message.trim(), phone: phone.trim(), email: userEmail || "", name: userName || "" })
       });
       if (!res.ok) throw new Error("request failed");
       setStatus("sent");
@@ -2038,6 +2038,14 @@ function AppWrapper() {
   const handleLogin = (u) => { setUser(u); };
   const handleAcceptDisclaimer = React.useCallback(() => setDisclaimerAccepted(true), []);
   const handleLogout = () => {
+    try {
+      const durationSec = user && user.ts ? Math.round((Date.now() - user.ts) / 1000) : 0;
+      fetch(window.location.origin + "/api/logout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: (user && user.name) || "", email: (user && user.email) || "", duration_seconds: durationSec })
+      }).catch(() => {});
+    } catch (_) {}
     localStorage.removeItem("bloomyco_user");
     setUser(null);
     setDisclaimerAccepted(false);
@@ -3695,7 +3703,7 @@ function App({ onLogout, user }) {
   );
 
   const feedbackModalEl = showFeedback
-    ? E(FeedbackModal, { onClose: () => setShowFeedback(false), userEmail: user && user.email })
+    ? E(FeedbackModal, { onClose: () => setShowFeedback(false), userEmail: user && user.email, userName: user && user.name })
     : null;
 
   if (detailView) {

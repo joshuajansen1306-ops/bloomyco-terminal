@@ -228,6 +228,9 @@ class Handler(SimpleHTTPRequestHandler):
         if parsed.path == "/api/feedback":
             self.handle_feedback()
             return
+        if parsed.path == "/api/logout":
+            self.handle_logout()
+            return
         self.send_json_error(404, "not found")
 
     def get_client_ip(self):
@@ -298,6 +301,44 @@ class Handler(SimpleHTTPRequestHandler):
             self.wfile.write(resp)
         except Exception as ex:
             print(f"[FEEDBACK ERROR] {ex}", flush=True)
+            self.send_json_error(500, str(ex))
+
+    def handle_logout(self):
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+            body   = json.loads(self.rfile.read(length))
+            name   = str(body.get("name",  "")).strip()
+            email  = str(body.get("email", "")).strip().lower()
+            dur    = int(body.get("duration_seconds", 0))
+            ip     = self.get_client_ip()
+            ts     = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+            mins, secs = divmod(dur, 60)
+            hrs,  mins = divmod(mins, 60)
+            dur_fmt = f"{hrs}h {mins}m {secs}s" if hrs else f"{mins}m {secs}s"
+            print(f"[LOGOUT] {ts} | {name} | {email} | {ip} | {dur_fmt}", flush=True)
+
+            if SHEETS_WEBHOOK:
+                params = urlencode({
+                    "type": "logout",
+                    "name": name,
+                    "email": email,
+                    "ip": ip,
+                    "duration_seconds": dur,
+                    "duration_fmt": dur_fmt,
+                    "timestamp": ts
+                })
+                url = SHEETS_WEBHOOK + "?" + params
+                urllib.request.urlopen(url, timeout=8)
+
+            resp = json.dumps({"ok": True}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Content-Length", str(len(resp)))
+            self.end_headers()
+            self.wfile.write(resp)
+        except Exception as ex:
+            print(f"[LOGOUT ERROR] {ex}", flush=True)
             self.send_json_error(500, str(ex))
 
     def log_message(self, format, *args):
