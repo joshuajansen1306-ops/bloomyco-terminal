@@ -2,6 +2,9 @@
 import json
 import time
 import datetime
+import gzip
+import io
+import mimetypes
 import urllib.request
 import urllib.error
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -65,7 +68,39 @@ class Handler(SimpleHTTPRequestHandler):
         if parsed.path == "/api/fundamentals":
             self.handle_fundamentals(parsed)
             return
-        super().do_GET()
+        self.serve_static()
+
+    def serve_static(self):
+        parsed = urlparse(self.path)
+        path = parsed.path.lstrip("/") or "index.html"
+        import os
+        if not os.path.isfile(path):
+            self.send_error(404, "Not Found")
+            return
+        mime, _ = mimetypes.guess_type(path)
+        if mime is None:
+            mime = "application/octet-stream"
+        with open(path, "rb") as f:
+            raw = f.read()
+        accepts_gzip = "gzip" in self.headers.get("Accept-Encoding", "")
+        if accepts_gzip:
+            buf = io.BytesIO()
+            with gzip.GzipFile(fileobj=buf, mode="wb", compresslevel=6) as gz:
+                gz.write(raw)
+            body = buf.getvalue()
+        else:
+            body = raw
+        is_html = mime == "text/html"
+        cache_control = "no-cache" if is_html else "public, max-age=86400"
+        self.send_response(200)
+        self.send_header("Content-Type", mime)
+        self.send_header("Cache-Control", cache_control)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Access-Control-Allow-Origin", "*")
+        if accepts_gzip:
+            self.send_header("Content-Encoding", "gzip")
+        self.end_headers()
+        self.wfile.write(body)
 
     def handle_fundamentals(self, parsed):
         qs = parse_qs(parsed.query)
