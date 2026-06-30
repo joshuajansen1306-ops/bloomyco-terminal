@@ -1684,6 +1684,123 @@ function LoginScreen({ onLogin }) {
   );
 }
 
+function StockDetailPage({ symbol, source, rowData, onBack }) {
+  const [chartData, setChartData] = useState(null);
+  const [chartRange, setChartRange] = useState("1d");
+  const [chartType, setChartType] = useState("candles");
+  const [chartLoading, setChartLoading] = useState(false);
+  const [news, setNews] = useState([]);
+  const [newsLoading, setNewsLoading] = useState(false);
+  const [fundamentals, setFundamentals] = useState({});
+  const proxyBase = window.location.origin;
+
+  useEffect(() => {
+    setChartLoading(true);
+    setChartData(null);
+    if (source === "crypto") {
+      const days = COINGECKO_DAYS_MAP[chartRange] || 30;
+      fetch(`https://api.coingecko.com/api/v3/coins/${encodeURIComponent(symbol)}/ohlc?vs_currency=usd&days=${days}`)
+        .then(r => r.json())
+        .then(data => {
+          const ohlc = (Array.isArray(data) ? data : []).map(([t, o, h, l, c]) => ({ time: Math.floor(t / 1000), open: o, high: h, low: l, close: c }));
+          setChartData(ohlc);
+        })
+        .catch(() => setChartData([]))
+        .finally(() => setChartLoading(false));
+    } else {
+      const rm = YAHOO_RANGE_MAP[chartRange] || { range: "1mo", interval: "1d" };
+      fetch(`${proxyBase}/api/yahoo?symbol=${encodeURIComponent(symbol)}&range=${rm.range}&interval=${rm.interval}`)
+        .then(r => r.json())
+        .then(data => {
+          const result = data?.chart?.result?.[0];
+          if (!result) { setChartData([]); return; }
+          const ts = result.timestamp || [];
+          const q = result.indicators?.quote?.[0] || {};
+          const ohlc = ts.map((t, i) => ({ time: t, open: q.open?.[i], high: q.high?.[i], low: q.low?.[i], close: q.close?.[i] }))
+            .filter(x => x.open != null && x.close != null);
+          setChartData(ohlc);
+        })
+        .catch(() => setChartData([]))
+        .finally(() => setChartLoading(false));
+    }
+  }, [symbol, source, chartRange]);
+
+  useEffect(() => {
+    setNewsLoading(true);
+    const q = source === "crypto" ? (rowData?.name || symbol) : symbol.split(".")[0];
+    fetch(`${proxyBase}/api/yahoo-search?q=${encodeURIComponent(q)}&quotesCount=0&newsCount=25`)
+      .then(r => r.json())
+      .then(data => {
+        let items = (data.news || []).slice().sort((a, b) => (b.providerPublishTime || 0) - (a.providerPublishTime || 0));
+        setNews(items);
+      })
+      .catch(() => setNews([]))
+      .finally(() => setNewsLoading(false));
+  }, [symbol, source]);
+
+  useEffect(() => {
+    if (source === "crypto") return;
+    fetch(`${proxyBase}/api/fundamentals?symbol=${encodeURIComponent(symbol)}`)
+      .then(r => r.json())
+      .then(data => setFundamentals(data))
+      .catch(() => setFundamentals({}));
+  }, [symbol, source]);
+
+  const isInr = source === "india";
+  const currency = isInr ? "INR" : source === "crypto" ? "USD" : (rowData?.currency || "USD");
+  const price = rowData?.current_price ?? rowData?.price ?? 0;
+  const changePct = rowData?.price_change_percentage_24h ?? rowData?.changePct ?? 0;
+  const label = source === "crypto" ? (rowData?.symbol || symbol).toUpperCase() : (rowData?.label || symbol);
+  const name = rowData?.name || symbol;
+  const d = rowData || {};
+
+  const newsEl = newsLoading
+    ? E("div", { className: "empty" }, "LOADING NEWS...")
+    : news.length === 0
+      ? E("div", { className: "empty" }, "NO NEWS FOUND")
+      : E("div", { className: "news-list" },
+          news.map((n, i) =>
+            E("a", { key: n.uuid || i, className: "news-item", href: n.link, target: "_blank", rel: "noopener noreferrer" },
+              E("div", { className: "news-title" }, n.title),
+              E("div", { className: "news-meta" }, (n.publisher || "") + (n.providerPublishTime ? " — " + timeAgo(n.providerPublishTime) : ""))
+            )
+          )
+        );
+
+  return E("div", { style: { display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", background: "var(--bg)" } },
+    E("div", { style: { background: "var(--panel)", borderBottom: "1px solid var(--border)", padding: "8px 14px", display: "flex", alignItems: "center", gap: 12, flexShrink: 0, flexWrap: "wrap" } },
+      E("button", { onClick: onBack, style: { background: "transparent", border: "1px solid var(--amber)", color: "var(--amber)", fontFamily: "inherit", fontSize: 11, fontWeight: 700, letterSpacing: 1, padding: "3px 10px", cursor: "pointer", whiteSpace: "nowrap" } }, "← BACK"),
+      E("span", { style: { color: "var(--cyan)", fontSize: 17, fontWeight: 700 } }, label),
+      E("span", { style: { color: "var(--dim)", fontSize: 12 } }, name),
+      E("span", { className: "mono-num", style: { fontSize: 15, fontWeight: 700, marginLeft: "auto" } },
+        isInr ? "₹" + fmtInr(price) : fmtCcy(price, currency)
+      ),
+      E("span", { className: "mono-num " + (changePct >= 0 ? "up" : "down"), style: { fontSize: 12 } },
+        (changePct >= 0 ? "▲ +" : "▼ ") + Math.abs(changePct || 0).toFixed(2) + "%"
+      )
+    ),
+    E("div", { style: { flex: 1, overflowY: "auto", padding: 10, display: "grid", gridTemplateColumns: "3fr 2fr", gap: 10, alignContent: "start" } },
+      E("div", null,
+        E("div", { className: "panel", style: { marginBottom: 10 } },
+          E("h2", null, "PRICE CHART"),
+          chartLoading
+            ? E("div", { className: "empty" }, "LOADING CHART...")
+            : E("div", { className: "chart-wrap" }, E(Chart, { chartType, ohlc: chartData })),
+          E(ChartControls, { chartType, setChartType, range: chartRange, setRange: setChartRange })
+        ),
+        source !== "crypto" && E("div", { className: "panel" },
+          E("h2", null, "FUNDAMENTALS"),
+          E(FundamentalsGrid, { d, fundamentals, currency, isInr })
+        )
+      ),
+      E("div", { className: "panel", style: { overflowY: "auto" } },
+        E("h2", null, "LATEST NEWS"),
+        newsEl
+      )
+    )
+  );
+}
+
 function AppWrapper() {
   const [user, setUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem("bloomyco_user")); } catch (_) { return null; }
@@ -1697,6 +1814,7 @@ function AppWrapper() {
 }
 
 function App({ onLogout }) {
+  const [detailView, setDetailView] = useState(null);
   const [tab, setTab] = useState("india");
   const [coins, setCoins] = useState([]);
   const [selected, setSelected] = useState("bitcoin");
@@ -2783,7 +2901,7 @@ function App({ onLogout }) {
               E("tr", {
                 key: c.id,
                 className: c.id === selected ? "selected" : "",
-                onClick: () => setSelected(c.id)
+                onClick: () => { setSelected(c.id); setDetailView({ symbol: c.id, source: "crypto", rowData: c }); }
               },
                 E("td", { style: { color: "var(--cyan)" } }, c.symbol.toUpperCase()),
                 E("td", null, c.name),
@@ -2810,7 +2928,7 @@ function App({ onLogout }) {
             E("div", {
               key: s.symbol,
               className: "index-card" + (s.symbol === selectedStock ? " active" : ""),
-              onClick: () => setSelectedStock(s.symbol)
+              onClick: () => { setSelectedStock(s.symbol); setDetailView({ symbol: s.symbol, source: "stocks", rowData: s }); }
             },
               E("div", { className: "ic-label" }, s.label),
               s.error
@@ -2848,7 +2966,7 @@ function App({ onLogout }) {
               : E("tr", {
                   key: s.symbol,
                   className: s.symbol === selectedStock ? "selected" : "",
-                  onClick: () => setSelectedStock(s.symbol)
+                  onClick: () => { setSelectedStock(s.symbol); setDetailView({ symbol: s.symbol, source: "stocks", rowData: s }); }
                 },
                   E("td", { style: { color: "var(--cyan)" } }, s.label),
                   E("td", null, s.name),
@@ -2890,7 +3008,7 @@ function App({ onLogout }) {
           E("div", {
             key: s.symbol,
             className: "index-card" + (s.symbol === selectedIndia ? " active" : ""),
-            onClick: () => setSelectedIndia(s.symbol)
+            onClick: () => { setSelectedIndia(s.symbol); setDetailView({ symbol: s.symbol, source: "india", rowData: s }); }
           },
             E("div", { className: "ic-label" }, s.label),
             s.error
@@ -2927,7 +3045,7 @@ function App({ onLogout }) {
             : E("tr", {
                 key: s.symbol,
                 className: s.symbol === selectedIndia ? "selected" : "",
-                onClick: () => setSelectedIndia(s.symbol)
+                onClick: () => { setSelectedIndia(s.symbol); setDetailView({ symbol: s.symbol, source: "india", rowData: s }); }
               },
                 E("td", { style: { color: "var(--cyan)" } }, s.label),
                 E("td", { className: "mono-num", style: { textAlign: "right" } }, "₹" + fmtInr(s.price)),
@@ -3354,6 +3472,22 @@ function App({ onLogout }) {
       statusUpdate ? statusUpdate.toLocaleTimeString() : "--"
     )
   );
+
+  if (detailView) {
+    return E("div", { className: "terminal" },
+      topbarEl,
+      tickerTapeEl,
+      E("div", { style: { flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" } },
+        E(StockDetailPage, {
+          symbol: detailView.symbol,
+          source: detailView.source,
+          rowData: detailView.rowData,
+          onBack: () => setDetailView(null)
+        })
+      ),
+      statusBarEl
+    );
+  }
 
   return E("div", { className: "terminal" },
     topbarEl,
