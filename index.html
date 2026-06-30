@@ -495,102 +495,172 @@
   .cmd-sug-name { color: var(--dim); font-size: 11px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cmd-hint { color: var(--dim); font-size: 10px; padding: 6px 12px; font-style: italic; }
 
-  /* ── MOBILE ──────────────────────────────────────────────────────────────── */
-  @media (max-width: 768px) {
+  /* ── RESPONSIVE / CROSS-DEVICE ───────────────────────────────────────────── */
+
+  /* Base touch improvements (all devices) */
+  * { -webkit-tap-highlight-color: transparent; }
+  html { -webkit-text-size-adjust: 100%; }
+  .panel, .sidebar, .indices-bar, .tabs {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Safe area padding for notched phones (iPhone X+) */
+  .topbar {
+    padding-left: max(10px, env(safe-area-inset-left));
+    padding-right: max(10px, env(safe-area-inset-right));
+  }
+  .statusbar {
+    padding-bottom: max(4px, env(safe-area-inset-bottom));
+  }
+
+  /* ── TABLET (iPad, Android tablet) — 768px to 1100px ── */
+  @media (max-width: 1100px) and (min-width: 641px) {
+    /* 2-column layout: main + sidebar */
+    .body {
+      grid-template-columns: 1fr 300px;
+      grid-template-rows: auto 1fr;
+      overflow: hidden;
+    }
+    /* Ticker spans both columns */
+    .ticker-tape { grid-column: 1 / -1; }
+
+    .index-blocks { grid-template-columns: 1fr 1fr; }
+    .sentiment-grid { grid-template-columns: 1fr 1fr; }
+    .summary-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .acct-summary { grid-template-columns: 1fr 1fr; }
+
+    .price-big { font-size: 22px; }
+    .chart-wrap svg { height: 190px; }
+    .tab { padding: 5px 12px; }
+  }
+
+  /* iPad portrait specifically */
+  @media (min-width: 768px) and (max-width: 820px) {
+    .body { grid-template-columns: 1fr; overflow: visible; }
+    .terminal { height: auto; min-height: 100dvh; }
+    .sidebar { overflow: visible; }
+    .sidebar .panel { flex: none; min-height: auto; }
+  }
+
+  /* ── MOBILE (phones ≤ 640px) ── */
+  @media (max-width: 640px) {
     body { font-size: 12px; }
 
-    /* Prevent 100vh address-bar issues on iOS */
+    /* Fix iOS 100vh / address bar */
     .terminal { height: auto; min-height: 100dvh; }
 
-    /* Topbar: compact */
-    .topbar { padding: 6px 10px; font-size: 11px; gap: 6px; flex-wrap: wrap; }
-    .topbar-brand { gap: 5px; }
+    /* Topbar */
+    .topbar { padding: 6px 10px; font-size: 11px; flex-wrap: nowrap; }
     .site-logo { height: 18px; }
     .topbar .clock { font-size: 10px; }
 
-    /* CMD bar: full width input, bigger touch target */
-    .cmdbar { padding: 8px 10px; }
-    .cmdbar input { font-size: 14px; padding: 8px 10px; }
+    /* CMD bar — 16px prevents iOS auto-zoom */
+    .cmdbar { padding: 6px 10px; }
+    .cmdbar input { font-size: 16px; padding: 8px 10px; }
+    .cmdbar .label { font-size: 11px; }
 
-    /* Main body: single column stack */
+    /* Single column stacked layout */
     .body {
       grid-template-columns: 1fr;
       grid-template-rows: auto;
       height: auto;
       overflow: visible;
     }
-
-    /* Ticker tape: slightly larger text */
-    .ticker-tape { padding: 8px 0; }
-    .ticker-item { font-size: 12px; padding: 0 18px; }
-
-    /* Panels: full width, auto height */
     .panel { overflow: visible; }
     .sidebar { overflow: visible; }
     .sidebar .panel { flex: none; min-height: auto; }
 
-    /* Tabs: scroll horizontally */
-    .tabs { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; }
-    .tab { white-space: nowrap; padding: 6px 14px; font-size: 12px; flex-shrink: 0; }
+    /* Ticker */
+    .ticker-tape { padding: 6px 0; }
+    .ticker-item { font-size: 12px; padding: 0 16px; }
 
-    /* Index blocks: 2 columns instead of 3 */
-    .index-blocks { grid-template-columns: 1fr 1fr; }
-    .index-card .ic-price { font-size: 15px; }
+    /* Tabs — horizontal scroll, no wrap */
+    .tabs { overflow-x: auto; flex-wrap: nowrap; gap: 4px; padding-bottom: 2px; -ms-overflow-style: none; scrollbar-width: none; }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab { white-space: nowrap; padding: 8px 14px; font-size: 12px; flex-shrink: 0; min-height: 36px; }
 
-    /* Big price: smaller on mobile */
-    .price-big { font-size: 20px; }
-
-    /* Detail grid: 2 columns stays fine */
-    .detail-grid { grid-template-columns: 1fr 1fr; gap: 5px 10px; }
-
-    /* Chart: taller on mobile for readability */
-    .chart-wrap svg { height: 220px; }
-    .chart-controls { gap: 8px; }
-    .chart-toggle { padding: 5px 10px; font-size: 11px; }
-
-    /* Sentiment: 2 columns */
-    .sentiment-grid { grid-template-columns: 1fr 1fr; }
-
-    /* Market summary: 2 columns */
-    .summary-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
-
-    /* Tables: horizontal scroll */
-    .panel > table { display: block; overflow-x: auto; }
-
-    /* Heatmap: 2 columns stays fine */
-    .heatmap-grid { grid-template-columns: 1fr 1fr; }
-
-    /* Account summary: 3 cols → 2 cols */
-    .acct-summary { grid-template-columns: 1fr 1fr; }
-
-    /* Portfolio form: stack */
-    .pf-form { flex-wrap: wrap; }
-    .pf-form select, .pf-form input { flex: 1 1 100%; }
-
-    /* Status bar: smaller */
-    .statusbar { font-size: 10px; padding: 4px 10px; flex-wrap: wrap; gap: 4px; }
-
-    /* Make all buttons/tappable things bigger */
-    .tab, .chart-toggle, .pf-form button, .trade-row button { min-height: 36px; }
-
-    /* News: slightly more spacing for touch */
-    .news-item { padding: 10px 0; }
-    .news-title { font-size: 13px; }
-
-    /* Indices bar scrolls naturally */
+    /* Indices bar */
     .indices-bar { gap: 14px; padding: 6px 10px; }
     .idx-item { font-size: 12px; }
 
-    /* Summary bar */
+    /* Index cards */
+    .index-blocks { grid-template-columns: 1fr 1fr; gap: 6px; }
+    .index-card { padding: 8px; }
+    .index-card .ic-price { font-size: 14px; }
+    .index-card .ic-label { font-size: 10px; }
+
+    /* Price display */
+    .price-big { font-size: 22px; }
+
+    /* Detail grid */
+    .detail-grid { grid-template-columns: 1fr 1fr; gap: 5px 8px; }
+    .detail-grid .v { font-size: 13px; }
+
+    /* Chart */
+    .chart-wrap svg { height: 220px; }
+    .chart-controls { gap: 6px; }
+    .chart-controls-group { flex-wrap: wrap; }
+    .chart-toggle { padding: 6px 10px; font-size: 11px; min-height: 32px; }
+
+    /* Sentiment */
+    .sentiment-grid { grid-template-columns: 1fr 1fr; gap: 6px 8px; }
+
+    /* Market summary */
     .summary-bar { padding: 10px; }
+    .summary-grid { grid-template-columns: 1fr 1fr; gap: 10px 8px; }
     .summary-col { padding-left: 8px; }
+    .summary-stat { font-size: 11px; }
+    .summary-text { font-size: 10px; }
+
+    /* Tables — horizontal scroll */
+    .panel > table, table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+    /* Heatmap */
+    .heatmap-grid { grid-template-columns: 1fr 1fr; }
+
+    /* Account */
+    .acct-summary { grid-template-columns: 1fr 1fr; }
+
+    /* Portfolio form */
+    .pf-form { flex-wrap: wrap; gap: 6px; }
+    .pf-form select, .pf-form input { flex: 1 1 45%; font-size: 14px; padding: 6px; }
+    .pf-form button { flex: 1 1 100%; padding: 8px; font-size: 13px; }
+
+    /* Trade form */
+    .trade-row { flex-wrap: wrap; }
+    .trade-row select, .trade-row input, .trade-row button { flex: 1 1 48%; min-height: 38px; font-size: 13px; }
+
+    /* Status bar */
+    .statusbar { font-size: 10px; flex-wrap: wrap; gap: 3px; }
+
+    /* News */
+    .news-item { padding: 10px 0; }
+    .news-title { font-size: 13px; line-height: 1.4; }
+    .news-meta { font-size: 11px; }
+
+    /* Market badge */
+    .mkt-badge { font-size: 9px; padding: 2px 6px; }
+
+    /* CMD dropdown */
+    .cmd-dropdown { max-height: 250px; }
+    .cmd-suggestion { padding: 10px 12px; }
   }
 
-  @media (max-width: 400px) {
+  /* ── TINY PHONES (≤ 380px, iPhone SE etc.) ── */
+  @media (max-width: 380px) {
     .index-blocks { grid-template-columns: 1fr; }
     .summary-grid { grid-template-columns: 1fr; }
-    .sentiment-grid { grid-template-columns: 1fr 1fr; }
     .price-big { font-size: 18px; }
+    .topbar { font-size: 10px; }
+    .site-logo { height: 16px; }
+  }
+
+  /* ── LARGE SCREENS (1400px+) ── */
+  @media (min-width: 1400px) {
+    .body { grid-template-columns: 1.4fr 1fr 300px; }
+    body { font-size: 13px; }
+    .price-big { font-size: 30px; }
+    .chart-wrap svg { height: 200px; }
   }
 </style>
 </head>
