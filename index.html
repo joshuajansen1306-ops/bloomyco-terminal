@@ -507,13 +507,42 @@
     justify-content: center;
     z-index: 9999;
     padding: 20px;
+    overflow: hidden;
+  }
+  .login-screen::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 3px,
+      rgba(0,0,0,0.08) 3px, rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+  .login-canvas {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+  }
+  @keyframes boxGlow {
+    0%,100% { box-shadow: 0 0 12px rgba(255,153,0,0.4), 0 0 30px rgba(255,153,0,0.1), inset 0 0 20px rgba(255,153,0,0.03); }
+    50%      { box-shadow: 0 0 24px rgba(255,153,0,0.7), 0 0 60px rgba(255,153,0,0.2), inset 0 0 30px rgba(255,153,0,0.06); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
   .login-box {
-    background: #0a0a0a;
+    background: rgba(6,5,0,0.92);
     border: 1px solid var(--amber);
     padding: 36px 32px 28px;
     width: 100%;
     max-width: 400px;
+    position: relative;
+    z-index: 2;
+    animation: boxGlow 3s ease-in-out infinite, fadeIn 0.6s ease;
+    backdrop-filter: blur(4px);
   }
   .login-logo {
     text-align: center;
@@ -1422,6 +1451,39 @@ function MarketSummaryBar({ india, stocks, coins, global }) {
   );
 }
 
+function LoginBackground() {
+  const canvasRef = React.useRef(null);
+  React.useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+    resize();
+    window.addEventListener("resize", resize);
+    const chars = ["₹","$","£","€","₿","▲","▼","%","NIFTY","BTC","NSE","ETH","S&P",
+      "0.5","1.2","23","89","4.7","0.3","12","56","▲2.1","▼0.8","BUY","SELL",
+      "AAPL","TSLA","RELIANCE","TCS","INFY","GOLD","USD","JPY","EUR"];
+    const cols = Math.floor(window.innerWidth / 18);
+    const drops = Array.from({length: cols}, () => Math.random() * -50);
+    const draw = () => {
+      ctx.fillStyle = "rgba(0,0,0,0.06)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      drops.forEach((y, i) => {
+        const char = chars[Math.floor(Math.random() * chars.length)];
+        const bright = Math.random();
+        ctx.font = bright > 0.97 ? "bold 13px monospace" : "12px monospace";
+        ctx.fillStyle = bright > 0.97 ? "#ff9900" : bright > 0.85 ? "#6b3a00" : "#2a1800";
+        ctx.fillText(char, i * 18, y * 18);
+        if (y * 18 > canvas.height && Math.random() > 0.97) drops[i] = 0;
+        drops[i] += 0.5;
+      });
+    };
+    const id = setInterval(draw, 40);
+    return () => { clearInterval(id); window.removeEventListener("resize", resize); };
+  }, []);
+  return E("canvas", { ref: canvasRef, className: "login-canvas" });
+}
+
 function LoginScreen({ onLogin }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -1463,6 +1525,7 @@ function LoginScreen({ onLogin }) {
   };
 
   return E("div", { className: "login-screen" },
+    E(LoginBackground, null),
     E("div", { className: "login-box" },
       E("div", { className: "login-logo" },
         E("div", {
