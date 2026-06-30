@@ -1070,20 +1070,31 @@ function ChartControls({ chartType, setChartType, range, setRange }) {
   );
 }
 
+function fmtChartPrice(v) {
+  if (v === null || v === undefined) return "";
+  if (v >= 1000) return v.toLocaleString("en-US", { maximumFractionDigits: 0 });
+  if (v >= 1) return v.toFixed(2);
+  return v.toPrecision(4);
+}
+
 function Candlestick({ ohlc }) {
   if (!ohlc || ohlc.length < 2) {
     return E("div", { className: "empty" }, "NO CHART DATA");
   }
-  const w = 600, h = 160, pad = 4;
+  const chartW = 540, labelW = 70, w = chartW + labelW, h = 160, pad = 4;
   const highs = ohlc.map((c) => c.high);
   const lows = ohlc.map((c) => c.low);
   const min = Math.min(...lows);
   const max = Math.max(...highs);
   const range = max - min || 1;
   const n = ohlc.length;
-  const slot = (w - pad * 2) / n;
+  const slot = (chartW - pad * 2) / n;
   const candleW = Math.max(1, slot * 0.6);
   const y = (v) => h - pad - ((v - min) / range) * (h - pad * 2);
+  const currentPrice = ohlc[ohlc.length - 1].close;
+  const currentY = y(currentPrice);
+  const isUp = currentPrice >= ohlc[0].close;
+  const priceColor = isUp ? "var(--green)" : "var(--red)";
   const candles = ohlc.map((c, i) => {
     const x = pad + i * slot + slot / 2;
     const up = c.close >= c.open;
@@ -1096,7 +1107,13 @@ function Candlestick({ ohlc }) {
       E("rect", { x: x - candleW / 2, y: bodyTop, width: candleW, height: bodyHeight, fill: color })
     );
   });
-  return E("svg", { viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: "none" }, candles);
+  const labelY = Math.max(10, Math.min(h - 10, currentY));
+  return E("svg", { viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: "none", style: { overflow: "visible" } },
+    ...candles,
+    E("line", { x1: pad, x2: chartW, y1: currentY, y2: currentY, stroke: priceColor, strokeWidth: "1", strokeDasharray: "4 3", opacity: "0.85" }),
+    E("rect", { x: chartW + 2, y: labelY - 9, width: labelW - 4, height: 16, fill: priceColor, rx: "2" }),
+    E("text", { x: chartW + labelW / 2 + 1, y: labelY + 4, textAnchor: "middle", fill: "#000", fontSize: "9", fontWeight: "700", fontFamily: "monospace" }, fmtChartPrice(currentPrice))
+  );
 }
 
 function Chart({ chartType, ohlc }) {
@@ -1297,11 +1314,11 @@ function Sparkline({ points }) {
   if (!points || points.length < 2) {
     return E("div", { className: "empty" }, "NO CHART DATA");
   }
-  const w = 600, h = 150, pad = 4;
+  const chartW = 540, labelW = 70, w = chartW + labelW, h = 150, pad = 4;
   const min = Math.min(...points);
   const max = Math.max(...points);
   const range = max - min || 1;
-  const stepX = (w - pad * 2) / (points.length - 1);
+  const stepX = (chartW - pad * 2) / (points.length - 1);
   const coords = points.map((p, i) => {
     const x = pad + i * stepX;
     const y = h - pad - ((p - min) / range) * (h - pad * 2);
@@ -1312,11 +1329,15 @@ function Sparkline({ points }) {
   const first = points[0];
   const color = last >= first ? "var(--green)" : "var(--red)";
   const areaD = d + ` L${coords[coords.length - 1][0].toFixed(1)},${h} L${coords[0][0].toFixed(1)},${h} Z`;
-  return E(
-    "svg",
-    { viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: "none" },
+  const lastCoord = coords[coords.length - 1];
+  const currentY = lastCoord[1];
+  const labelY = Math.max(10, Math.min(h - 10, currentY));
+  return E("svg", { viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: "none", style: { overflow: "visible" } },
     E("path", { d: areaD, fill: color, opacity: "0.08", stroke: "none" }),
-    E("path", { d: d, fill: "none", stroke: color, strokeWidth: "1.5" })
+    E("path", { d, fill: "none", stroke: color, strokeWidth: "1.5" }),
+    E("line", { x1: pad, x2: chartW, y1: currentY, y2: currentY, stroke: color, strokeWidth: "1", strokeDasharray: "4 3", opacity: "0.85" }),
+    E("rect", { x: chartW + 2, y: labelY - 9, width: labelW - 4, height: 16, fill: color, rx: "2" }),
+    E("text", { x: chartW + labelW / 2 + 1, y: labelY + 4, textAnchor: "middle", fill: "#000", fontSize: "9", fontWeight: "700", fontFamily: "monospace" }, fmtChartPrice(last))
   );
 }
 
