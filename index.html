@@ -1231,6 +1231,21 @@ const SECTOR_CATEGORY_IDS = [
   "stablecoins"
 ];
 
+const COMMODITY_SYMBOLS = [
+  { symbol: "GC=F",  label: "GOLD",       unit: "USD/oz",     group: "METALS" },
+  { symbol: "SI=F",  label: "SILVER",     unit: "USD/oz",     group: "METALS" },
+  { symbol: "PL=F",  label: "PLATINUM",   unit: "USD/oz",     group: "METALS" },
+  { symbol: "PA=F",  label: "PALLADIUM",  unit: "USD/oz",     group: "METALS" },
+  { symbol: "HG=F",  label: "COPPER",     unit: "USD/lb",     group: "METALS" },
+  { symbol: "ALI=F", label: "ALUMINIUM",  unit: "USD/lb",     group: "METALS" },
+  { symbol: "CL=F",  label: "WTI CRUDE",  unit: "USD/bbl",    group: "ENERGY" },
+  { symbol: "BZ=F",  label: "BRENT CRUDE",unit: "USD/bbl",    group: "ENERGY" },
+  { symbol: "NG=F",  label: "NATURAL GAS",unit: "USD/MMBtu",  group: "ENERGY" },
+  { symbol: "ZW=F",  label: "WHEAT",      unit: "USc/bu",     group: "AGRICULTURE" },
+  { symbol: "ZC=F",  label: "CORN",       unit: "USc/bu",     group: "AGRICULTURE" },
+  { symbol: "ZS=F",  label: "SOYBEANS",   unit: "USc/bu",     group: "AGRICULTURE" },
+];
+
 function fxToInr(currency, fxRates) {
   if (!currency || currency === "INR") return 1;
   if (currency === "GBp") return (fxRates.GBP || 0) / 100;
@@ -2082,6 +2097,12 @@ function App({ onLogout, user }) {
   const [stocksLoading, setStocksLoading] = useState(true);
   const [stocksChartData, setStocksChartData] = useState(null);
 
+  const [commodities, setCommodities] = useState([]);
+  const [selectedCommodity, setSelectedCommodity] = useState("GC=F");
+  const [commoditiesLoading, setCommoditiesLoading] = useState(true);
+  const [commoditiesError, setCommoditiesError] = useState(null);
+  const [commoditiesLastUpdate, setCommoditiesLastUpdate] = useState(null);
+
   const [india, setIndia] = useState([]);
   const [selectedIndia, setSelectedIndia] = useState("^NSEI");
   const [indiaError, setIndiaError] = useState(null);
@@ -2270,6 +2291,35 @@ function App({ onLogout, user }) {
       setIndiaError(e.message || "fetch failed");
     } finally {
       setIndiaLoading(false);
+    }
+  }, []);
+
+  const fetchCommodities = useCallback(async () => {
+    try {
+      const results = await Promise.all(
+        COMMODITY_SYMBOLS.map((s) =>
+          fetch(`${LOCAL_PROXY_BASE}/api/yahoo?symbol=${encodeURIComponent(s.symbol)}`)
+            .then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+            .then((data) => {
+              const result = data.chart && data.chart.result && data.chart.result[0];
+              if (!result) throw new Error("no data");
+              const m = result.meta;
+              const price = m.regularMarketPrice;
+              const prevClose = m.previousClose !== undefined ? m.previousClose : m.chartPreviousClose;
+              const change = price !== undefined && prevClose !== undefined ? price - prevClose : null;
+              const changePct = change !== null && prevClose ? (change / prevClose) * 100 : null;
+              return { symbol: s.symbol, label: s.label, unit: s.unit, group: s.group, price, prevClose, change, changePct, high: m.regularMarketDayHigh, low: m.regularMarketDayLow, open: m.regularMarketOpen, fiftyTwoWeekHigh: m.fiftyTwoWeekHigh, fiftyTwoWeekLow: m.fiftyTwoWeekLow };
+            })
+            .catch(() => ({ symbol: s.symbol, label: s.label, unit: s.unit, group: s.group, error: true }))
+        )
+      );
+      setCommodities(results);
+      setCommoditiesError(null);
+      setCommoditiesLastUpdate(new Date());
+    } catch (e) {
+      setCommoditiesError(e.message || "fetch failed");
+    } finally {
+      setCommoditiesLoading(false);
     }
   }, []);
 
@@ -2577,6 +2627,12 @@ function App({ onLogout, user }) {
     const t = setInterval(fetchIndia, 45000);
     return () => clearInterval(t);
   }, [fetchIndia]);
+
+  useEffect(() => {
+    fetchCommodities();
+    const t = setInterval(fetchCommodities, 60000);
+    return () => clearInterval(t);
+  }, [fetchCommodities]);
 
   useEffect(() => {
     if (tab !== "india") return;
@@ -3306,6 +3362,52 @@ function App({ onLogout, user }) {
     indiaStocksTable
   );
 
+  const COMMODITY_GROUPS = ["METALS", "ENERGY", "AGRICULTURE"];
+  const commoditiesWatchlistContent = E("div", null,
+    commoditiesLoading
+      ? E("div", { className: "empty" }, "LOADING COMMODITIES...")
+      : commoditiesError
+        ? E("div", { className: "empty" }, commoditiesError)
+        : COMMODITY_GROUPS.map((group) => {
+            const rows = commodities.filter((c) => c.group === group);
+            return E("div", { key: group },
+              E("div", { className: "india-section-label" }, group),
+              E("table", null,
+                E("thead", null,
+                  E("tr", null,
+                    E("th", null, "COMMODITY"),
+                    E("th", { style: { textAlign: "right" } }, "PRICE"),
+                    E("th", { style: { textAlign: "right" } }, "UNIT"),
+                    E("th", { style: { textAlign: "right" } }, "CHANGE"),
+                    E("th", { style: { textAlign: "right" } }, "CHANGE %"),
+                    E("th", { style: { textAlign: "right" } }, "HIGH"),
+                    E("th", { style: { textAlign: "right" } }, "LOW")
+                  )
+                ),
+                E("tbody", null,
+                  rows.map((c) =>
+                    c.error
+                      ? E("tr", { key: c.symbol }, E("td", { colSpan: 7, className: "empty" }, c.label + " — UNAVAILABLE"))
+                      : E("tr", {
+                          key: c.symbol,
+                          className: c.symbol === selectedCommodity ? "selected" : "",
+                          onClick: () => { setSelectedCommodity(c.symbol); setDetailView({ symbol: c.symbol, source: "stocks", rowData: { ...c, currency: "USD", name: c.label } }); }
+                        },
+                          E("td", { style: { color: "var(--cyan)" } }, c.label),
+                          E("td", { className: "mono-num", style: { textAlign: "right" } }, fmtUsd(c.price)),
+                          E("td", { style: { textAlign: "right", color: "var(--dim)", fontSize: 10 } }, c.unit),
+                          E("td", { className: "mono-num " + (c.change >= 0 ? "up" : "down"), style: { textAlign: "right" } }, (c.change >= 0 ? "+" : "") + fmtUsd(c.change)),
+                          E("td", { className: "mono-num " + (c.changePct >= 0 ? "up" : "down"), style: { textAlign: "right" } }, (c.changePct >= 0 ? "+" : "") + (c.changePct || 0).toFixed(2) + "%"),
+                          E("td", { className: "mono-num", style: { textAlign: "right" } }, fmtUsd(c.high)),
+                          E("td", { className: "mono-num", style: { textAlign: "right" } }, fmtUsd(c.low))
+                        )
+                  )
+                )
+              )
+            );
+          })
+  );
+
   const searchPanelContent = E("div", null,
     E("div", { className: "pf-form", style: { marginBottom: 10 } },
       E("input", {
@@ -3352,11 +3454,13 @@ function App({ onLogout, user }) {
       E("span", { className: "tab" + (tab === "india" ? " active" : ""), onClick: () => setTab("india") }, "INDIA"),
       E("span", { className: "tab" + (tab === "stocks" ? " active" : ""), onClick: () => setTab("stocks") }, "INTERNATIONAL STOCKS"),
       E("span", { className: "tab" + (tab === "crypto" ? " active" : ""), onClick: () => setTab("crypto") }, "CRYPTO"),
+      E("span", { className: "tab" + (tab === "commodities" ? " active" : ""), onClick: () => setTab("commodities") }, "COMMODITIES"),
       E("span", { className: "tab" + (tab === "search" ? " active" : ""), onClick: () => setTab("search") }, "SEARCH")
     ),
     tab === "crypto" ? watchlistContent
       : tab === "stocks" ? watchlistContent
       : tab === "india" ? indiaWatchlistContent
+      : tab === "commodities" ? commoditiesWatchlistContent
       : searchPanelContent
   );
 
