@@ -1827,49 +1827,54 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
 }
 
 function DisclaimerScreen({ onAccept }) {
+  React.useEffect(() => {
+    const handle = () => onAccept();
+    window.addEventListener("keydown", handle);
+    window.addEventListener("pointerdown", handle);
+    return () => {
+      window.removeEventListener("keydown", handle);
+      window.removeEventListener("pointerdown", handle);
+    };
+  }, [onAccept]);
+
   return E("div", { style: {
     position: "fixed", inset: 0, background: "#000",
     display: "flex", alignItems: "center", justifyContent: "center",
-    fontFamily: "monospace", zIndex: 9999, padding: "20px"
+    fontFamily: "monospace", zIndex: 9999, padding: "20px", cursor: "pointer"
   }},
     E("div", { style: {
       border: "1px solid #ff9900", maxWidth: 680, width: "100%",
-      background: "#0a0a0a", padding: "40px 44px"
+      background: "#0a0a0a", padding: "36px 40px"
     }},
-      E("div", { style: { color: "#ff9900", fontSize: 11, letterSpacing: 3, marginBottom: 28, opacity: 0.7 } },
+      E("div", { style: { color: "#ff9900", fontSize: 10, letterSpacing: 3, marginBottom: 24, opacity: 0.7 } },
         "BLOOMYCO.IN  ·  IMPORTANT NOTICE"
       ),
-      E("div", { style: { color: "#fff", fontSize: 20, fontWeight: 700, letterSpacing: 1, marginBottom: 24, lineHeight: 1.3 } },
+      E("div", { style: { color: "#fff", fontSize: 19, fontWeight: 700, letterSpacing: 1, marginBottom: 22 } },
         "TERMS OF ACCESS"
       ),
       E("div", { style: { color: "#ccc", fontSize: 13, lineHeight: 1.9, marginBottom: 28 } },
-        E("p", { style: { marginBottom: 16 } },
-          "This platform is a ", E("span", { style: { color: "#fff", fontWeight: 700 } }, "financial information terminal"),
+        E("p", { style: { marginBottom: 14 } },
+          "This platform is a ",
+          E("span", { style: { color: "#fff", fontWeight: 700 } }, "financial information terminal"),
           " designed solely to present real-time and historical market data for reference purposes."
         ),
-        E("div", { style: { borderLeft: "2px solid #ff9900", paddingLeft: 16, marginBottom: 20 } },
-          E("p", { style: { margin: "0 0 10px", color: "#fff", fontWeight: 700, fontSize: 12, letterSpacing: 1 } }, "THIS PLATFORM DOES NOT:"),
-          E("p", { style: { margin: "4px 0", color: "#aaa" } }, "— Provide investment advice or recommendations"),
-          E("p", { style: { margin: "4px 0", color: "#aaa" } }, "— Suggest where to buy, sell, or hold any security"),
-          E("p", { style: { margin: "4px 0", color: "#aaa" } }, "— Guarantee the accuracy or timeliness of any data shown"),
-          E("p", { style: { margin: "4px 0", color: "#aaa" } }, "— Act as a registered financial advisor or broker")
+        E("div", { style: { borderLeft: "2px solid #ff9900", paddingLeft: 16, marginBottom: 18 } },
+          E("p", { style: { margin: "0 0 8px", color: "#fff", fontWeight: 700, fontSize: 11, letterSpacing: 1 } }, "THIS PLATFORM DOES NOT:"),
+          E("p", { style: { margin: "3px 0", color: "#aaa" } }, "— Provide investment advice or recommendations"),
+          E("p", { style: { margin: "3px 0", color: "#aaa" } }, "— Suggest where to buy, sell, or hold any security"),
+          E("p", { style: { margin: "3px 0", color: "#aaa" } }, "— Guarantee the accuracy or timeliness of any data shown"),
+          E("p", { style: { margin: "3px 0", color: "#aaa" } }, "— Act as a registered financial advisor or broker")
         ),
-        E("p", { style: { marginBottom: 12 } },
-          "All investment decisions are solely your own responsibility. Past performance of any security is not indicative of future results. You should consult a SEBI-registered investment advisor before making any financial decisions."
+        E("p", { style: { marginBottom: 10 } },
+          "All investment decisions are solely your own responsibility. Past performance is not indicative of future results. Consult a SEBI-registered investment advisor before making any financial decisions."
         ),
-        E("p", { style: { color: "#666", fontSize: 11, marginBottom: 0 } },
-          "By proceeding, you confirm that you have read, understood, and agree to these terms."
+        E("p", { style: { color: "#555", fontSize: 11 } },
+          "By continuing, you confirm that you have read, understood, and agree to these terms."
         )
       ),
-      E("button", {
-        onClick: onAccept,
-        style: {
-          background: "#ff9900", color: "#000", border: "none",
-          fontFamily: "monospace", fontSize: 12, fontWeight: 700,
-          letterSpacing: 2, padding: "12px 36px", cursor: "pointer",
-          width: "100%"
-        }
-      }, "I UNDERSTAND — ENTER TERMINAL ▶")
+      E("div", { style: { textAlign: "center", color: "#ff9900", fontSize: 11, letterSpacing: 2, opacity: 0.8, animation: "blink 1.4s step-end infinite" } },
+        "TAP ANYWHERE OR PRESS ANY KEY TO CONTINUE"
+      )
     )
   );
 }
@@ -1878,19 +1883,11 @@ function AppWrapper() {
   const [user, setUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem("bloomyco_user")); } catch (_) { return null; }
   });
-  const [disclaimerAccepted, setDisclaimerAccepted] = useState(() => {
-    try { return !!sessionStorage.getItem("bloomyco_disclaimer"); } catch (_) { return false; }
-  });
-  const handleLogin = (u) => {
-    setUser(u);
-  };
-  const handleAcceptDisclaimer = () => {
-    try { sessionStorage.setItem("bloomyco_disclaimer", "1"); } catch (_) {}
-    setDisclaimerAccepted(true);
-  };
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
+  const handleLogin = (u) => { setUser(u); };
+  const handleAcceptDisclaimer = React.useCallback(() => setDisclaimerAccepted(true), []);
   const handleLogout = () => {
     localStorage.removeItem("bloomyco_user");
-    try { sessionStorage.removeItem("bloomyco_disclaimer"); } catch (_) {}
     setUser(null);
     setDisclaimerAccepted(false);
   };
