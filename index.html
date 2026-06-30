@@ -1816,7 +1816,8 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
           chartLoading
             ? E("div", { className: "empty" }, "LOADING CHART...")
             : E("div", { className: "chart-wrap" }, E(Chart, { chartType, ohlc: chartData })),
-          E(ChartControls, { chartType, setChartType, range: chartRange, setRange: setChartRange })
+          E(ChartControls, { chartType, setChartType, range: chartRange, setRange: setChartRange }),
+          !chartLoading && E(MarketSentiment, { price, fiftyTwoWeekHigh: d.fiftyTwoWeekHigh, fiftyTwoWeekLow: d.fiftyTwoWeekLow, ohlc: chartData })
         ),
         source !== "crypto" && E("div", { className: "panel", style: { flex: 1, overflowY: "auto" } },
           E(FundamentalsGrid, { d, fundamentals, currency, isInr })

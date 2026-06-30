@@ -23,48 +23,61 @@ YAHOO_BASE     = "https://query1.finance.yahoo.com/v8/finance/chart/"
 YAHOO_SEARCH   = "https://query1.finance.yahoo.com/v1/finance/search"
 
 _fundamentals_cache = {}
-CACHE_TTL = 300
+CACHE_TTL = 3600       # successful fetches barely change intraday — cache for an hour
+ERROR_CACHE_TTL = 45   # failures (e.g. rate limits) retry much sooner
+
+def _fetch_fundamentals_once(symbol):
+    t = yf.Ticker(symbol)
+    info = t.info or {}
+    print(f"[FUNDAMENTALS] {symbol}: info has {len(info)} keys", flush=True)
+    try:
+        fi = t.fast_info
+        mc = getattr(fi, "market_cap", None)
+    except Exception:
+        mc = None
+    data = {
+        "open":           info.get("open") or info.get("regularMarketOpen"),
+        "volume":         info.get("volume") or info.get("regularMarketVolume"),
+        "avgVolume":      info.get("averageVolume") or info.get("averageDailyVolume10Day"),
+        "marketCap":      info.get("marketCap") or mc,
+        "trailingPE":     info.get("trailingPE"),
+        "forwardPE":      info.get("forwardPE"),
+        "eps":            info.get("trailingEps"),
+        "beta":           info.get("beta"),
+        "dividendYield":  info.get("dividendYield") or info.get("trailingAnnualDividendYield"),
+        "priceToBook":    info.get("priceToBook"),
+        "fiftyTwoWeekHigh": info.get("fiftyTwoWeekHigh"),
+        "fiftyTwoWeekLow":  info.get("fiftyTwoWeekLow"),
+    }
+    return {k: v for k, v in data.items() if v is not None}
 
 def get_fundamentals(symbol):
     now = time.time()
     if symbol in _fundamentals_cache:
-        ts, data = _fundamentals_cache[symbol]
-        if now - ts < CACHE_TTL:
+        ts, data, ok = _fundamentals_cache[symbol]
+        ttl = CACHE_TTL if ok else ERROR_CACHE_TTL
+        if now - ts < ttl:
             return data
     if not _yf_ok:
         print(f"[FUNDAMENTALS] {symbol}: yfinance import failed at startup", flush=True)
         return {"_debug": "yfinance not importable"}
-    try:
-        t = yf.Ticker(symbol)
-        info = t.info or {}
-        print(f"[FUNDAMENTALS] {symbol}: info has {len(info)} keys", flush=True)
-        # fast_info as fallback for price-level fields
+
+    data, ok = {}, False
+    for attempt in range(2):
         try:
-            fi = t.fast_info
-            mc = getattr(fi, "market_cap", None)
-        except Exception:
-            fi, mc = None, None
-        data = {
-            "open":           info.get("open") or info.get("regularMarketOpen"),
-            "volume":         info.get("volume") or info.get("regularMarketVolume"),
-            "avgVolume":      info.get("averageVolume") or info.get("averageDailyVolume10Day"),
-            "marketCap":      info.get("marketCap") or mc,
-            "trailingPE":     info.get("trailingPE"),
-            "forwardPE":      info.get("forwardPE"),
-            "eps":            info.get("trailingEps"),
-            "beta":           info.get("beta"),
-            "dividendYield":  info.get("dividendYield") or info.get("trailingAnnualDividendYield"),
-            "priceToBook":    info.get("priceToBook"),
-            "fiftyTwoWeekHigh": info.get("fiftyTwoWeekHigh"),
-            "fiftyTwoWeekLow":  info.get("fiftyTwoWeekLow"),
-        }
-        data = {k: v for k, v in data.items() if v is not None}
-        if not data:
-            data["_debug"] = f"info had {len(info)} keys, none of the target fields were populated"
-    except Exception as e:
-        print(f"[FUNDAMENTALS] {symbol}: {type(e).__name__}: {e}", flush=True)
-        data = {"_debug": f"{type(e).__name__}: {e}"}
-    _fundamentals_cache[symbol] = (now, data)
+            data = _fetch_fundamentals_once(symbol)
+            ok = bool(data)
+            if not data:
+                data = {"_debug": "info returned no usable fields"}
+            break
+        except Exception as e:
+            print(f"[FUNDAMENTALS] {symbol} attempt {attempt + 1}: {type(e).__name__}: {e}", flush=True)
+            data = {"_debug": f"{type(e).__name__}: {e}"}
+            if attempt == 0 and "rate" in type(e).__name__.lower():
+                time.sleep(2)
+                continue
+            break
+    _fundamentals_cache[symbol] = (now, data, ok)
     return data
 
 
