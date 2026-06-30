@@ -1896,6 +1896,110 @@ function DisclaimerScreen({ onAccept }) {
   );
 }
 
+function FeedbackModal({ onClose, userEmail }) {
+  const [message, setMessage] = useState("");
+  const [phone, setPhone] = useState("");
+  const [status, setStatus] = useState("idle"); // idle | sending | sent | error
+
+  const submit = async () => {
+    if (!message.trim() || status === "sending") return;
+    setStatus("sending");
+    try {
+      const res = await fetch(`${window.location.origin}/api/feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: message.trim(), phone: phone.trim(), email: userEmail || "" })
+      });
+      if (!res.ok) throw new Error("request failed");
+      setStatus("sent");
+    } catch (e) {
+      setStatus("error");
+    }
+  };
+
+  return E("div", {
+    style: {
+      position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontFamily: "monospace", zIndex: 9998, padding: "20px"
+    },
+    onClick: (e) => { if (e.target === e.currentTarget) onClose(); }
+  },
+    E("div", {
+      style: {
+        border: "1px solid var(--amber)", maxWidth: 460, width: "100%",
+        background: "var(--panel)", padding: "28px 30px",
+        boxShadow: "0 0 24px rgba(255,153,0,0.25)"
+      }
+    },
+      E("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 } },
+        E("div", { style: { color: "var(--amber)", fontSize: 14, fontWeight: 700, letterSpacing: 1 } }, "SHARE FEEDBACK"),
+        E("button", {
+          onClick: onClose,
+          style: { background: "transparent", border: "none", color: "var(--dim)", fontSize: 16, cursor: "pointer" }
+        }, "✕")
+      ),
+      status === "sent"
+        ? E("div", { style: { color: "var(--green)", fontSize: 13, lineHeight: 1.7, textAlign: "center", padding: "20px 0" } },
+            "Thanks — your feedback has been recorded.",
+            E("div", { style: { marginTop: 16 } },
+              E("button", {
+                onClick: onClose,
+                style: {
+                  background: "var(--amber)", border: "none", color: "#000",
+                  fontFamily: "inherit", fontSize: 11, fontWeight: 700, letterSpacing: 1,
+                  padding: "7px 18px", cursor: "pointer"
+                }
+              }, "CLOSE")
+            )
+          )
+        : E(React.Fragment, null,
+            E("div", { style: { color: "var(--dim)", fontSize: 12, marginBottom: 16, lineHeight: 1.6 } },
+              "Tell us what's working, what's broken, or what you'd like to see next."
+            ),
+            E("textarea", {
+              value: message,
+              onChange: (e) => setMessage(e.target.value),
+              placeholder: "Your feedback...",
+              rows: 5,
+              style: {
+                width: "100%", background: "var(--bg)", border: "1px solid var(--border)",
+                color: "#fff", fontFamily: "inherit", fontSize: 13, padding: "10px",
+                resize: "vertical", marginBottom: 12, boxSizing: "border-box"
+              }
+            }),
+            E("input", {
+              type: "tel",
+              value: phone,
+              onChange: (e) => setPhone(e.target.value),
+              placeholder: "Phone number (optional)",
+              style: {
+                width: "100%", background: "var(--bg)", border: "1px solid var(--border)",
+                color: "#fff", fontFamily: "inherit", fontSize: 13, padding: "10px",
+                marginBottom: 6, boxSizing: "border-box"
+              }
+            }),
+            E("div", { style: { color: "var(--dim)", fontSize: 10.5, marginBottom: 18 } },
+              "Optional — only share it if you'd like us to follow up."
+            ),
+            status === "error" && E("div", { style: { color: "var(--red)", fontSize: 12, marginBottom: 12 } },
+              "Something went wrong sending that. Please try again."
+            ),
+            E("button", {
+              onClick: submit,
+              disabled: !message.trim() || status === "sending",
+              style: {
+                width: "100%", background: !message.trim() ? "var(--border)" : "var(--amber)",
+                border: "none", color: "#000", fontFamily: "inherit", fontSize: 12, fontWeight: 700,
+                letterSpacing: 1, padding: "10px", cursor: !message.trim() ? "default" : "pointer",
+                opacity: status === "sending" ? 0.6 : 1
+              }
+            }, status === "sending" ? "SENDING..." : "SUBMIT FEEDBACK")
+          )
+    )
+  );
+}
+
 function AppWrapper() {
   const [user, setUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem("bloomyco_user")); } catch (_) { return null; }
@@ -1910,11 +2014,12 @@ function AppWrapper() {
   };
   if (!user) return E(LoginScreen, { onLogin: handleLogin });
   if (!disclaimerAccepted) return E(DisclaimerScreen, { onAccept: handleAcceptDisclaimer });
-  return E(App, { onLogout: handleLogout });
+  return E(App, { onLogout: handleLogout, user });
 }
 
-function App({ onLogout }) {
+function App({ onLogout, user }) {
   const [detailView, setDetailView] = useState(null);
+  const [showFeedback, setShowFeedback] = useState(false);
   const [tab, setTab] = useState("india");
   const [coins, setCoins] = useState([]);
   const [selected, setSelected] = useState("bitcoin");
@@ -2821,6 +2926,22 @@ function App({ onLogout }) {
     ),
     E("div", { style: { display: "flex", alignItems: "center", gap: "10px" } },
       E("button", {
+        onClick: () => setShowFeedback(true),
+        style: {
+          background: "transparent",
+          border: "1px solid rgba(0,0,0,0.5)",
+          color: "#000",
+          fontFamily: "inherit",
+          fontSize: "10px",
+          fontWeight: "700",
+          letterSpacing: "1px",
+          padding: "2px 7px",
+          cursor: "pointer",
+          opacity: "0.7",
+          whiteSpace: "nowrap"
+        }
+      }, "FEEDBACK"),
+      E("button", {
         onClick: onLogout,
         style: {
           background: "transparent",
@@ -3573,30 +3694,40 @@ function App({ onLogout }) {
     )
   );
 
+  const feedbackModalEl = showFeedback
+    ? E(FeedbackModal, { onClose: () => setShowFeedback(false), userEmail: user && user.email })
+    : null;
+
   if (detailView) {
-    return E("div", { className: "terminal" },
-      topbarEl,
-      tickerTapeEl,
-      E("div", { style: { flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" } },
-        E(StockDetailPage, {
-          symbol: detailView.symbol,
-          source: detailView.source,
-          rowData: detailView.rowData,
-          onBack: () => setDetailView(null)
-        })
+    return E(React.Fragment, null,
+      E("div", { className: "terminal" },
+        topbarEl,
+        tickerTapeEl,
+        E("div", { style: { flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" } },
+          E(StockDetailPage, {
+            symbol: detailView.symbol,
+            source: detailView.source,
+            rowData: detailView.rowData,
+            onBack: () => setDetailView(null)
+          })
+        ),
+        statusBarEl
       ),
-      statusBarEl
+      feedbackModalEl
     );
   }
 
-  return E("div", { className: "terminal" },
-    topbarEl,
-    cmdbarEl,
-    indicesBarEl,
-    tickerTapeEl,
-    bodyEl,
-    E(MarketSummaryBar, { india, stocks, coins, global }),
-    statusBarEl
+  return E(React.Fragment, null,
+    E("div", { className: "terminal" },
+      topbarEl,
+      cmdbarEl,
+      indicesBarEl,
+      tickerTapeEl,
+      bodyEl,
+      E(MarketSummaryBar, { india, stocks, coins, global }),
+      statusBarEl
+    ),
+    feedbackModalEl
   );
 }
 

@@ -225,6 +225,9 @@ class Handler(SimpleHTTPRequestHandler):
         if parsed.path == "/api/register":
             self.handle_register()
             return
+        if parsed.path == "/api/feedback":
+            self.handle_feedback()
+            return
         self.send_json_error(404, "not found")
 
     def handle_register(self):
@@ -251,6 +254,41 @@ class Handler(SimpleHTTPRequestHandler):
             self.wfile.write(resp)
         except Exception as ex:
             print(f"[REGISTER ERROR] {ex}", flush=True)
+            self.send_json_error(500, str(ex))
+
+    def handle_feedback(self):
+        try:
+            length  = int(self.headers.get("Content-Length", 0))
+            body    = json.loads(self.rfile.read(length))
+            message = str(body.get("message", "")).strip()
+            phone   = str(body.get("phone",   "")).strip()
+            email   = str(body.get("email",   "")).strip().lower()
+            if not message:
+                self.send_json_error(400, "missing message")
+                return
+            ts = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+            print(f"[FEEDBACK] {ts} | {email} | {phone} | {message[:120]}", flush=True)
+
+            if SHEETS_WEBHOOK:
+                params = urlencode({
+                    "type": "feedback",
+                    "message": message,
+                    "phone": phone,
+                    "email": email,
+                    "timestamp": ts
+                })
+                url = SHEETS_WEBHOOK + "?" + params
+                urllib.request.urlopen(url, timeout=8)
+
+            resp = json.dumps({"ok": True}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Content-Length", str(len(resp)))
+            self.end_headers()
+            self.wfile.write(resp)
+        except Exception as ex:
+            print(f"[FEEDBACK ERROR] {ex}", flush=True)
             self.send_json_error(500, str(ex))
 
     def log_message(self, format, *args):
