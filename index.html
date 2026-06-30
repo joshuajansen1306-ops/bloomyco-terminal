@@ -1619,6 +1619,11 @@ function LoginScreen({ onLogin }) {
   const handleSecretSubmit = (ev) => {
     ev.preventDefault();
     if (secretCode.trim().toLowerCase() === "chicken") {
+      fetch(LOCAL_PROXY_BASE + "/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Guest", email: "guest@bloomyco.in" })
+      }).catch(() => {});
       localStorage.setItem("bloomyco_user", JSON.stringify({ name: "Guest", email: "guest@bloomyco.in", ts: Date.now() }));
       onLogin({ name: "Guest", email: "guest@bloomyco.in" });
     } else {

@@ -230,18 +230,25 @@ class Handler(SimpleHTTPRequestHandler):
             return
         self.send_json_error(404, "not found")
 
+    def get_client_ip(self):
+        fwd = self.headers.get("X-Forwarded-For", "")
+        if fwd:
+            return fwd.split(",")[0].strip()
+        return self.client_address[0]
+
     def handle_register(self):
         try:
             length = int(self.headers.get("Content-Length", 0))
             body = json.loads(self.rfile.read(length))
             name  = str(body.get("name",  "")).strip()
             email = str(body.get("email", "")).strip().lower()
+            ip    = self.get_client_ip()
             ts    = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
-            print(f"[REGISTER] {ts} | {name} | {email}", flush=True)
+            print(f"[REGISTER] {ts} | {name} | {email} | {ip}", flush=True)
 
             # Save to Google Sheets via Apps Script (GET with params — more reliable)
             if SHEETS_WEBHOOK:
-                params = urlencode({"name": name, "email": email, "timestamp": ts})
+                params = urlencode({"name": name, "email": email, "ip": ip, "timestamp": ts})
                 url = SHEETS_WEBHOOK + "?" + params
                 urllib.request.urlopen(url, timeout=8)
 
@@ -263,11 +270,12 @@ class Handler(SimpleHTTPRequestHandler):
             message = str(body.get("message", "")).strip()
             phone   = str(body.get("phone",   "")).strip()
             email   = str(body.get("email",   "")).strip().lower()
+            ip      = self.get_client_ip()
             if not message:
                 self.send_json_error(400, "missing message")
                 return
             ts = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
-            print(f"[FEEDBACK] {ts} | {email} | {phone} | {message[:120]}", flush=True)
+            print(f"[FEEDBACK] {ts} | {email} | {phone} | {ip} | {message[:120]}", flush=True)
 
             if SHEETS_WEBHOOK:
                 params = urlencode({
@@ -275,6 +283,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "message": message,
                     "phone": phone,
                     "email": email,
+                    "ip": ip,
                     "timestamp": ts
                 })
                 url = SHEETS_WEBHOOK + "?" + params
