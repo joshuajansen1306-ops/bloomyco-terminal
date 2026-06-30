@@ -1552,11 +1552,15 @@ function AppWrapper() {
   const [user, setUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem("bloomyco_user")); } catch (_) { return null; }
   });
+  const handleLogout = () => {
+    localStorage.removeItem("bloomyco_user");
+    setUser(null);
+  };
   if (!user) return E(LoginScreen, { onLogin: setUser });
-  return E(App, null);
+  return E(App, { onLogout: handleLogout });
 }
 
-function App() {
+function App({ onLogout }) {
   const [tab, setTab] = useState("india");
   const [coins, setCoins] = useState([]);
   const [selected, setSelected] = useState("bitcoin");
@@ -2449,7 +2453,22 @@ function App() {
       }),
       E("span", null, "BLOOMYCO.IN")
     ),
-    E(Clock, null)
+    E(Clock, null),
+    E("button", {
+      onClick: onLogout,
+      style: {
+        background: "transparent",
+        border: "1px solid #000",
+        color: "#000",
+        fontFamily: "inherit",
+        fontSize: "10px",
+        fontWeight: "700",
+        letterSpacing: "1px",
+        padding: "3px 8px",
+        cursor: "pointer",
+        opacity: "0.7"
+      }
+    }, "LOGOUT")
   );
 
   const computeCmdSuggestions = useCallback((val) => {
