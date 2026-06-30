@@ -1294,6 +1294,57 @@ function Sparkline({ points }) {
   );
 }
 
+// Real-time market status using hardcoded exchange hours (updates every minute)
+function computeMarketStatus(exchange) {
+  const ex = (exchange || "").toUpperCase();
+  const now = new Date();
+  const day = now.getUTCDay(); // 0=Sun, 6=Sat
+  const isWeekday = day >= 1 && day <= 5;
+  const todayUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) / 1000;
+  const nowTs = Math.floor(Date.now() / 1000);
+
+  // NSE / BSE — Mon-Fri 9:15 AM–3:30 PM IST = 3:45 AM–10:00 AM UTC
+  if (ex.includes("NSE") || ex.includes("BSE") || ex.includes("NSI") || ex.includes("INDIA")) {
+    const openTs  = todayUTC + 3*3600 + 45*60;
+    const closeTs = todayUTC + 10*3600;
+    const preTs   = todayUTC + 3*3600 + 15*60; // 9:15 AM IST pre-open
+    const isOpen  = isWeekday && nowTs >= openTs && nowTs < closeTs;
+    const isPre   = isWeekday && nowTs >= preTs  && nowTs < openTs;
+    return { open: isOpen, pre: isPre, exchange: "NSE", closeAt: closeTs, openAt: openTs };
+  }
+
+  // NYSE / NASDAQ / US — Mon-Fri 9:30 AM–4:00 PM ET
+  // EDT = UTC-4 (Mar–Nov), EST = UTC-5 (Nov–Mar)
+  if (ex.includes("NYSE") || ex.includes("NASDAQ") || ex === "NMS" || ex === "NGM" || ex === "NCM" || ex === "BATS" || ex === "CBOE") {
+    const mo = now.getUTCMonth() + 1;
+    const isDST = mo >= 3 && mo <= 11;
+    const offset = isDST ? 4 : 5;
+    const openTs  = todayUTC + (9 + offset)*3600 + 30*60;
+    const closeTs = todayUTC + (16 + offset)*3600;
+    const preTs   = todayUTC + (4 + offset)*3600;
+    const isOpen  = isWeekday && nowTs >= openTs && nowTs < closeTs;
+    const isPre   = isWeekday && nowTs >= preTs  && nowTs < openTs;
+    return { open: isOpen, pre: isPre, exchange, closeAt: closeTs, openAt: openTs };
+  }
+
+  // LSE (London) — Mon-Fri 8:00 AM–4:30 PM BST/GMT
+  if (ex.includes("LSE") || ex.includes("LONDON") || ex === "LON") {
+    const mo = now.getUTCMonth() + 1;
+    const offset = (mo >= 3 && mo <= 10) ? 1 : 0; // BST=UTC+1
+    const openTs  = todayUTC + (8 - offset)*3600;
+    const closeTs = todayUTC + (16 - offset)*3600 + 30*60;
+    const isOpen  = isWeekday && nowTs >= openTs && nowTs < closeTs;
+    return { open: isOpen, pre: false, exchange: "LSE", closeAt: closeTs, openAt: openTs };
+  }
+
+  // Crypto — 24/7
+  if (ex.includes("CRYPTO") || ex.includes("CCC") || ex.includes("COINBASE") || ex.includes("BINANCE")) {
+    return { open: true, pre: false, exchange: "CRYPTO", closeAt: null, openAt: null };
+  }
+
+  return null;
+}
+
 function fmtCountdown(secs) {
   if (secs == null || secs <= 0) return null;
   const h = Math.floor(secs / 3600);
@@ -2193,6 +2244,18 @@ function App({ onLogout }) {
     const t2 = setInterval(fetchIndia, 15000);
     return () => { clearInterval(t1); clearInterval(t2); };
   }, [marketStatus, fetchStocks, fetchIndia]);
+
+  // Recalculate open/closed every 30s using real clock — keeps badge accurate after market close
+  useEffect(() => {
+    if (!marketStatus?.exchange) return;
+    const refresh = () => {
+      const computed = computeMarketStatus(marketStatus.exchange);
+      if (computed) setMarketStatus(prev => prev ? { ...prev, open: computed.open, pre: computed.pre } : prev);
+    };
+    refresh();
+    const t = setInterval(refresh, 30000);
+    return () => clearInterval(t);
+  }, [marketStatus?.exchange]);
 
   useEffect(() => {
     fetchGlobal();
