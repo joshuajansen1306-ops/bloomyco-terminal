@@ -1405,6 +1405,9 @@ function LoginScreen({ onLogin }) {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [secretMode, setSecretMode] = useState(false);
+  const [secretCode, setSecretCode] = useState("");
+  const [secretError, setSecretError] = useState("");
 
   const handleSubmit = async (ev) => {
     ev.preventDefault();
@@ -1426,42 +1429,75 @@ function LoginScreen({ onLogin }) {
     onLogin({ name: n, email: em });
   };
 
+  const handleSecretSubmit = (ev) => {
+    ev.preventDefault();
+    if (secretCode.trim().toLowerCase() === "chicken") {
+      localStorage.setItem("bloomyco_user", JSON.stringify({ name: "Guest", email: "guest@bloomyco.in", ts: Date.now() }));
+      onLogin({ name: "Guest", email: "guest@bloomyco.in" });
+    } else {
+      setSecretError("INVALID CODE");
+      setSecretCode("");
+    }
+  };
+
   return E("div", { className: "login-screen" },
     E("div", { className: "login-box" },
       E("div", { className: "login-logo" },
-        E("div", { className: "login-ticker" }, "₿"),
+        E("div", {
+          className: "login-ticker",
+          onClick: () => { setSecretMode(!secretMode); setSecretError(""); setSecretCode(""); },
+          style: { cursor: "pointer", userSelect: "none" }
+        }, "₿"),
         E("h1", null, "BLOOMYCO.IN"),
         E("p", { className: "login-subtitle" }, "FINANCIAL TERMINAL · ACCESS PORTAL")
       ),
       E("hr", { className: "login-divider" }),
-      E("form", { onSubmit: handleSubmit },
-        E("div", { className: "login-field" },
-          E("label", null, "FULL NAME"),
-          E("input", {
-            type: "text",
-            value: name,
-            onChange: ev => setName(ev.target.value),
-            placeholder: "John Doe",
-            autoFocus: true,
-            autoComplete: "name"
-          })
-        ),
-        E("div", { className: "login-field" },
-          E("label", null, "GOOGLE EMAIL"),
-          E("input", {
-            type: "email",
-            value: email,
-            onChange: ev => setEmail(ev.target.value),
-            placeholder: "yourname@gmail.com",
-            autoComplete: "email"
-          })
-        ),
-        error ? E("div", { className: "login-error" }, "⚠ " + error) : null,
-        E("button", { type: "submit", className: "login-btn", disabled: loading },
-          loading ? "CONNECTING..." : "ENTER TERMINAL ▶"
-        )
-      ),
-      E("p", { className: "login-note" },
+
+      secretMode
+        ? E("form", { onSubmit: handleSecretSubmit },
+            E("div", { className: "login-field" },
+              E("label", null, "ACCESS CODE"),
+              E("input", {
+                type: "password",
+                value: secretCode,
+                onChange: ev => setSecretCode(ev.target.value),
+                placeholder: "Enter secret code",
+                autoFocus: true
+              })
+            ),
+            secretError ? E("div", { className: "login-error" }, "⚠ " + secretError) : null,
+            E("button", { type: "submit", className: "login-btn" }, "UNLOCK ▶"),
+            E("p", { className: "login-note", style: { cursor: "pointer" }, onClick: () => setSecretMode(false) }, "← Back to login")
+          )
+        : E("form", { onSubmit: handleSubmit },
+            E("div", { className: "login-field" },
+              E("label", null, "FULL NAME"),
+              E("input", {
+                type: "text",
+                value: name,
+                onChange: ev => setName(ev.target.value),
+                placeholder: "John Doe",
+                autoFocus: true,
+                autoComplete: "name"
+              })
+            ),
+            E("div", { className: "login-field" },
+              E("label", null, "GOOGLE EMAIL"),
+              E("input", {
+                type: "email",
+                value: email,
+                onChange: ev => setEmail(ev.target.value),
+                placeholder: "yourname@gmail.com",
+                autoComplete: "email"
+              })
+            ),
+            error ? E("div", { className: "login-error" }, "⚠ " + error) : null,
+            E("button", { type: "submit", className: "login-btn", disabled: loading },
+              loading ? "CONNECTING..." : "ENTER TERMINAL ▶"
+            )
+          ),
+
+      secretMode ? null : E("p", { className: "login-note" },
         "Your access is saved on this device.", E("br", null),
         "You will not be asked again."
       )
