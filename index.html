@@ -2039,8 +2039,9 @@ function AppWrapper() {
   const handleAcceptDisclaimer = React.useCallback(() => setDisclaimerAccepted(true), []);
   const handleLogout = () => {
     try {
+      const isGuest = !user || user.email === "guest@bloomyco.in";
       const durationSec = user && user.ts ? Math.round((Date.now() - user.ts) / 1000) : 0;
-      fetch(window.location.origin + "/api/logout", {
+      if (!isGuest) fetch(window.location.origin + "/api/logout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: (user && user.name) || "", email: (user && user.email) || "", duration_seconds: durationSec })
