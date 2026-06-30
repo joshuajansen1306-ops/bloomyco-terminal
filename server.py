@@ -32,10 +32,12 @@ def get_fundamentals(symbol):
         if now - ts < CACHE_TTL:
             return data
     if not _yf_ok:
-        return {}
+        print(f"[FUNDAMENTALS] {symbol}: yfinance import failed at startup", flush=True)
+        return {"_debug": "yfinance not importable"}
     try:
         t = yf.Ticker(symbol)
         info = t.info or {}
+        print(f"[FUNDAMENTALS] {symbol}: info has {len(info)} keys", flush=True)
         # fast_info as fallback for price-level fields
         try:
             fi = t.fast_info
@@ -57,9 +59,11 @@ def get_fundamentals(symbol):
             "fiftyTwoWeekLow":  info.get("fiftyTwoWeekLow"),
         }
         data = {k: v for k, v in data.items() if v is not None}
+        if not data:
+            data["_debug"] = f"info had {len(info)} keys, none of the target fields were populated"
     except Exception as e:
-        print(f"[FUNDAMENTALS] {symbol}: {e}", flush=True)
-        data = {}
+        print(f"[FUNDAMENTALS] {symbol}: {type(e).__name__}: {e}", flush=True)
+        data = {"_debug": f"{type(e).__name__}: {e}"}
     _fundamentals_cache[symbol] = (now, data)
     return data
 

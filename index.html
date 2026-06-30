@@ -1819,7 +1819,6 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
           E(ChartControls, { chartType, setChartType, range: chartRange, setRange: setChartRange })
         ),
         source !== "crypto" && E("div", { className: "panel", style: { flex: 1, overflowY: "auto" } },
-          E("h2", null, "FUNDAMENTALS"),
           E(FundamentalsGrid, { d, fundamentals, currency, isInr })
         )
       ),
