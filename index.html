@@ -3556,7 +3556,19 @@ function App({ onLogout, user }) {
   );
 
   const heatmapPanelEl = E("div", { className: "panel", style: { flex: "1 1 0" } },
-    E("h2", null, "SECTOR HEATMAP — 24H"),
+    E("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 } },
+      E("h2", { style: { margin: 0 } }, "SECTOR HEATMAP — 24H"),
+      E("button", {
+        onClick: () => { setCategoriesLoading(true); setCategoriesError(null); fetchCategories(); },
+        style: {
+          background: "transparent", border: "1px solid var(--border)", color: "var(--dim)",
+          fontFamily: "inherit", fontSize: 10, letterSpacing: 1, padding: "3px 8px",
+          cursor: "pointer", transition: "color 0.15s, border-color 0.15s"
+        },
+        onMouseEnter: (e) => { e.target.style.color = "var(--amber)"; e.target.style.borderColor = "var(--amber)"; },
+        onMouseLeave: (e) => { e.target.style.color = "var(--dim)"; e.target.style.borderColor = "var(--border)"; }
+      }, "↻ REFRESH")
+    ),
     categoriesLoading
       ? E("div", { className: "empty" }, "LOADING...")
       : categoriesError
