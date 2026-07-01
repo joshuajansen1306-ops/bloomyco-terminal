@@ -358,6 +358,11 @@
   .chart-wrap { margin-top: 10px; }
   .chart-wrap svg { width: 100%; height: 220px; display: block; }
 
+  @keyframes flashUp   { 0% { background: rgba(0,255,102,0.45); } 100% { background: transparent; } }
+  @keyframes flashDown { 0% { background: rgba(255,59,59,0.45); } 100% { background: transparent; } }
+  .flash-up   { animation: flashUp 0.9s ease-out; }
+  .flash-down { animation: flashDown 0.9s ease-out; }
+
   .chart-controls {
     display: flex;
     justify-content: space-between;
@@ -1045,6 +1050,25 @@ function Clock() {
     return () => clearInterval(t);
   }, []);
   return E("span", { className: "clock" }, now.toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", timeZoneName: "longOffset" }));
+}
+
+// Flashes green/red for ~1s whenever its numeric value changes between renders
+function FlashPrice({ value, render, className }) {
+  const prev = React.useRef(value);
+  const [flash, setFlash] = useState("");
+  useEffect(() => {
+    if (prev.current != null && value != null && value !== prev.current) {
+      setFlash(value > prev.current ? "flash-up" : "flash-down");
+      const t = setTimeout(() => setFlash(""), 900);
+      prev.current = value;
+      return () => clearTimeout(t);
+    }
+    prev.current = value;
+  }, [value]);
+  return E("span", {
+    className: ((className || "") + " " + flash).trim(),
+    style: { display: "inline-block", padding: "0 4px", borderRadius: 2 }
+  }, render ? render(value) : value);
 }
 
 const TIMEFRAMES = [
@@ -2664,25 +2688,27 @@ function App({ onLogout, user }) {
   // Live chart refresh when market is open
   useEffect(() => {
     if (!marketStatus || !marketStatus.open) return;
-    const intervalMs = (chartRange === "5m") ? 30000 : (chartRange === "30m") ? 90000 : 120000;
+    const intervalMs = (chartRange === "5m") ? 10000 : (chartRange === "30m") ? 20000 : 30000;
     const fn = tab === "india"
       ? () => fetchIndiaChart(selectedIndia, chartRange)
       : tab === "stocks"
         ? () => fetchStocksChart(selectedStock, chartRange)
-        : tab === "search" && selectedSearchResult
-          ? () => fetchSearchChart(selectedSearchResult.symbol, chartRange)
-          : null;
+        : tab === "commodities"
+          ? () => fetchStocksChart(selectedCommodity, chartRange)
+          : tab === "search" && selectedSearchResult
+            ? () => fetchSearchChart(selectedSearchResult.symbol, chartRange)
+            : null;
     if (!fn) return;
     const t = setInterval(fn, intervalMs);
     return () => clearInterval(t);
-  }, [marketStatus, tab, chartRange, selectedIndia, selectedStock, selectedSearchResult,
+  }, [marketStatus, tab, chartRange, selectedIndia, selectedStock, selectedCommodity, selectedSearchResult,
       fetchIndiaChart, fetchStocksChart, fetchSearchChart]);
 
   // Faster price refresh when market is open
   useEffect(() => {
     if (!marketStatus || !marketStatus.open) return;
-    const t1 = setInterval(fetchStocks, 15000);
-    const t2 = setInterval(fetchIndia, 15000);
+    const t1 = setInterval(fetchStocks, 8000);
+    const t2 = setInterval(fetchIndia, 8000);
     return () => { clearInterval(t1); clearInterval(t2); };
   }, [marketStatus, fetchStocks, fetchIndia]);
 
@@ -3192,7 +3218,7 @@ function App({ onLogout, user }) {
               },
                 E("td", { style: { color: "var(--cyan)" } }, c.symbol.toUpperCase()),
                 E("td", null, c.name),
-                E("td", { className: "mono-num", style: { textAlign: "right" } }, "$" + fmtUsd(c.current_price)),
+                E("td", { className: "mono-num", style: { textAlign: "right" } }, E(FlashPrice, { value: c.current_price, render: (v) => "$" + fmtUsd(v) })),
                 E("td", {
                   className: "mono-num " + (c.price_change_percentage_24h >= 0 ? "up" : "down"),
                   style: { textAlign: "right" }
@@ -3257,7 +3283,7 @@ function App({ onLogout, user }) {
                 },
                   E("td", { style: { color: "var(--cyan)" } }, s.label),
                   E("td", null, s.name),
-                  E("td", { className: "mono-num", style: { textAlign: "right" } }, fmtCcy(s.price, s.currency)),
+                  E("td", { className: "mono-num", style: { textAlign: "right" } }, E(FlashPrice, { value: s.price, render: (v) => fmtCcy(v, s.currency) })),
                   E("td", {
                     className: "mono-num " + (s.change >= 0 ? "up" : "down"),
                     style: { textAlign: "right" }
@@ -3335,7 +3361,7 @@ function App({ onLogout, user }) {
                 onClick: () => { setSelectedIndia(s.symbol); setDetailView({ symbol: s.symbol, source: "india", rowData: s }); }
               },
                 E("td", { style: { color: "var(--cyan)" } }, s.label),
-                E("td", { className: "mono-num", style: { textAlign: "right" } }, "₹" + fmtInr(s.price)),
+                E("td", { className: "mono-num", style: { textAlign: "right" } }, E(FlashPrice, { value: s.price, render: (v) => "₹" + fmtInr(v) })),
                 E("td", {
                   className: "mono-num " + (s.change >= 0 ? "up" : "down"),
                   style: { textAlign: "right" }
