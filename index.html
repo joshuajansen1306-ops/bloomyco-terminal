@@ -130,18 +130,33 @@
   }
   .tab {
     cursor: pointer;
-    padding: 4px 12px;
+    padding: 5px 14px;
     font-size: 11px;
     letter-spacing: 1px;
-    color: #e6e6e6;
-    border: 1px solid #555;
-    font-weight: 500;
+    color: #eaeaea;
+    background: #1e1e1e;
+    border: 1px solid #6a6a6a;
+    border-radius: 3px;
+    font-weight: 600;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+  }
+  .tab:not(.active):hover {
+    background: #333333;
+    border-color: var(--amber);
+    color: var(--amber);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(255,153,0,0.28);
+  }
+  .tab:not(.active):active {
+    transform: translateY(0);
+    background: #3d3d3d;
   }
   .tab.active {
     color: #000;
     background: var(--amber);
     border-color: var(--amber);
     font-weight: 700;
+    box-shadow: 0 0 12px rgba(255,153,0,0.45);
   }
 
   .indices-bar {
