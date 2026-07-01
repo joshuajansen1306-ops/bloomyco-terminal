@@ -130,33 +130,34 @@
   }
   .tab {
     cursor: pointer;
-    padding: 5px 14px;
+    padding: 6px 16px;
     font-size: 11px;
     letter-spacing: 1px;
-    color: #eaeaea;
-    background: #1e1e1e;
-    border: 1px solid #6a6a6a;
-    border-radius: 3px;
+    color: #f0f0f0;
+    background: linear-gradient(#3a3a3a, #262626);
+    border: 1px solid #8a8a8a;
+    border-radius: 4px;
     font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
     transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
   }
   .tab:not(.active):hover {
-    background: #333333;
+    background: linear-gradient(#4a4a4a, #333333);
     border-color: var(--amber);
     color: var(--amber);
     transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(255,153,0,0.28);
+    box-shadow: 0 3px 10px rgba(255,153,0,0.35);
   }
   .tab:not(.active):active {
     transform: translateY(0);
-    background: #3d3d3d;
+    background: #444444;
   }
   .tab.active {
     color: #000;
-    background: var(--amber);
-    border-color: var(--amber);
+    background: linear-gradient(#ffb733, var(--amber));
+    border-color: #ffcc66;
     font-weight: 700;
-    box-shadow: 0 0 12px rgba(255,153,0,0.45);
+    box-shadow: 0 0 14px rgba(255,153,0,0.55);
   }
 
   .indices-bar {

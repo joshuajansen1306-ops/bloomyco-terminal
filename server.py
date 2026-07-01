@@ -123,10 +123,13 @@ class Handler(SimpleHTTPRequestHandler):
         else:
             body = raw
         is_html = mime == "text/html"
-        cache_control = "no-cache" if is_html else "public, max-age=86400"
+        cache_control = "no-store, no-cache, must-revalidate, max-age=0" if is_html else "public, max-age=86400"
         self.send_response(200)
         self.send_header("Content-Type", mime)
         self.send_header("Cache-Control", cache_control)
+        if is_html:
+            self.send_header("Pragma", "no-cache")
+            self.send_header("Expires", "0")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Access-Control-Allow-Origin", "*")
         if accepts_gzip:
