@@ -991,36 +991,6 @@ const INDIA_SYMBOLS = [
   { symbol: "JSWSTEEL.NS", label: "JSWSTEEL", isIndex: false }
 ];
 
-// Sector peer groups for the comparison table (Indian + international)
-const PEER_GROUPS = [
-  ["TCS.NS", "INFY.NS", "WIPRO.NS", "HCLTECH.NS"],
-  ["HDFCBANK.NS", "ICICIBANK.NS", "SBIN.NS", "KOTAKBANK.NS", "AXISBANK.NS"],
-  ["RELIANCE.NS", "ONGC.NS"],
-  ["NTPC.NS", "POWERGRID.NS"],
-  ["HINDUNILVR.NS", "ITC.NS", "NESTLEIND.NS"],
-  ["MARUTI.NS", "TMCV.NS"],
-  ["BAJFINANCE.NS", "BAJAJFINSV.NS"],
-  ["TATASTEEL.NS", "JSWSTEEL.NS"],
-  ["LT.NS", "ADANIENT.NS", "ADANIPORTS.NS"],
-  ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA"],
-  ["TSM", "005930.KS", "000660.KS", "ASML.AS", "SAP.DE"],
-  ["AZN.L", "GSK.L", "SAN.PA", "RHHBY"],
-  ["ULVR.L", "NESN.SW", "OR.PA", "MC.PA"],
-  ["HSBA.L", "RY.TO", "TD.TO"],
-  ["7203.T", "6758.T"],
-  ["0700.HK", "BABA"],
-];
-
-function getPeerSymbols(symbol) {
-  for (const g of PEER_GROUPS) {
-    if (g.includes(symbol)) return g.filter((s) => s !== symbol);
-  }
-  return [];
-}
-
-const SYMBOL_LABELS = {};
-[...INTL_SYMBOLS, ...INDIA_SYMBOLS].forEach((s) => { SYMBOL_LABELS[s.symbol] = s.label; });
-
 function fmtInr(n, decimals) {
   if (n === undefined || n === null) return "--";
   const d = decimals !== undefined ? decimals : 2;
@@ -1856,19 +1826,7 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
   const [news, setNews] = useState([]);
   const [newsLoading, setNewsLoading] = useState(false);
   const [fundamentals, setFundamentals] = useState({});
-  const [detailTab, setDetailTab] = useState("overview");
-  const [company, setCompany] = useState(null);
-  const [companyLoading, setCompanyLoading] = useState(false);
-  const [peers, setPeers] = useState(null);
-  const [peersLoading, setPeersLoading] = useState(false);
   const proxyBase = window.location.origin;
-
-  // Reset per-security view state when navigating to a different symbol
-  useEffect(() => {
-    setDetailTab("overview");
-    setCompany(null);
-    setPeers(null);
-  }, [symbol]);
 
   useEffect(() => {
     setChartLoading(true);
@@ -1936,47 +1894,6 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
   }, [symbol, source, proxyBase]);
   useEffect(() => { loadFundamentals(); }, [loadFundamentals]);
 
-  // Company profile + financial statements (12h server cache)
-  const loadCompany = useCallback(() => {
-    if (source === "crypto") return;
-    setCompanyLoading(true);
-    fetch(`${proxyBase}/api/company?symbol=${encodeURIComponent(symbol)}`)
-      .then(r => r.json())
-      .then(data => setCompany(data || {}))
-      .catch(() => setCompany({}))
-      .finally(() => setCompanyLoading(false));
-  }, [symbol, source, proxyBase]);
-  useEffect(() => { loadCompany(); }, [loadCompany]);
-
-  const retryFundamentals = useCallback(() => { loadCompany(); loadFundamentals(); }, [loadCompany, loadFundamentals]);
-
-  const loadPeers = useCallback(() => {
-    const peerSyms = getPeerSymbols(symbol);
-    if (peerSyms.length === 0) { setPeers([]); return; }
-    setPeersLoading(true);
-    Promise.all([symbol, ...peerSyms].map((sy) =>
-      Promise.all([
-        fetch(`${proxyBase}/api/yahoo?symbol=${encodeURIComponent(sy)}`).then(r => r.json()).catch(() => null),
-        fetch(`${proxyBase}/api/fundamentals?symbol=${encodeURIComponent(sy)}`).then(r => r.json()).catch(() => ({}))
-      ]).then(([quote, fund]) => {
-        const m = quote?.chart?.result?.[0]?.meta;
-        if (!m) return null;
-        const px = m.regularMarketPrice;
-        const prev = m.previousClose ?? m.chartPreviousClose;
-        const chg = (px != null && prev) ? ((px - prev) / prev) * 100 : null;
-        return { symbol: sy, label: SYMBOL_LABELS[sy] || sy.split(".")[0], price: px,
-                 changePct: chg, marketCap: (fund && fund.marketCap) || null,
-                 pe: (fund && fund.trailingPE) || null,
-                 currency: m.currency || "", isSelf: sy === symbol };
-      }).catch(() => null)
-    )).then(rows => setPeers(rows.filter(Boolean)))
-      .finally(() => setPeersLoading(false));
-  }, [symbol, proxyBase]);
-
-  useEffect(() => {
-    if (detailTab === "peers" && peers === null && !peersLoading) loadPeers();
-  }, [detailTab, peers, peersLoading, loadPeers]);
-
   const isInr = source === "india";
   const currency = isInr ? "INR" : source === "crypto" ? "USD" : (rowData?.currency || "USD");
   const price = rowData?.current_price ?? rowData?.price ?? 0;
@@ -1985,97 +1902,16 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
   const name = rowData?.name || symbol;
   const d = rowData || {};
 
-  const symOf = (cur) => cur === "INR" ? "₹" : cur === "USD" ? "$"
-    : (cur === "GBP" || cur === "GBp") ? "£" : cur === "EUR" ? "€"
-    : cur === "JPY" ? "¥" : (cur ? cur + " " : "");
-  const curSym = symOf(currency);
-  const ratios = (company && company.ratios) || {};
-  const profile = (company && company.profile) || {};
-  const fundamentalsAvailable = Object.values(ratios).some(v => v != null)
-    || !!profile.summary || !!profile.sector || !!profile.name;
-  const fundamentalsUnavailable = source !== "crypto" && !companyLoading && company != null && !fundamentalsAvailable;
-  const pctOf = (v) => v == null ? "--" : (v * 100).toFixed(2) + "%";
-  const fmtRev = (v) => {
-    if (v == null) return "--";
-    if (isInr) return "₹" + (v / 1e7).toLocaleString("en-IN", { maximumFractionDigits: 0 }) + " Cr";
-    const b = v / 1e9;
-    return (curSym || "") + (Math.abs(b) >= 1 ? b.toFixed(2) + "B" : (v / 1e6).toFixed(1) + "M");
-  };
-
-  // ── Compounded growth (CAGR) from annual financials (newest-first) ──
-  const annualRows = (company && company.annual) || [];
-  const cagrOf = (key) => {
-    const vals = annualRows.map(r => r[key]).filter(v => v != null && v > 0);
-    if (vals.length < 2) return null;
-    const years = vals.length - 1;
-    return { rate: Math.pow(vals[0] / vals[vals.length - 1], 1 / years) - 1, years };
-  };
-  const revCagr = cagrOf("revenue");
-  const profitCagr = cagrOf("netIncome");
-
-  // ── Pros & Cons (rule-based, screener-style) ──
-  const pros = [], cons = [];
-  const de = ratios.debtToEquity != null ? ratios.debtToEquity / 100 : null;
-  const latestAnnualNI = annualRows.length ? annualRows[0].netIncome : null;
-  if (de != null && de < 0.15) pros.push("Company is almost debt free.");
-  if (ratios.roe != null && ratios.roe > 0.15) pros.push("Good return on equity (ROE) of " + (ratios.roe * 100).toFixed(1) + "%.");
-  if (profitCagr && profitCagr.rate > 0.20) pros.push("Strong profit growth of " + (profitCagr.rate * 100).toFixed(0) + "% CAGR over " + profitCagr.years + " years.");
-  if (revCagr && revCagr.rate > 0.15) pros.push("Healthy revenue growth of " + (revCagr.rate * 100).toFixed(0) + "% CAGR over " + revCagr.years + " years.");
-  if (ratios.profitMargin != null && ratios.profitMargin > 0.15) pros.push("Strong profit margin of " + (ratios.profitMargin * 100).toFixed(1) + "%.");
-  if (ratios.trailingPE != null && ratios.trailingPE > 0 && ratios.trailingPE < 15) pros.push("Attractively valued at a P/E of " + ratios.trailingPE.toFixed(1) + ".");
-  if (ratios.priceToBook != null && ratios.priceToBook > 0 && ratios.priceToBook < 1) pros.push("Trading below book value (P/B " + ratios.priceToBook.toFixed(2) + ").");
-  if (ratios.roa != null && ratios.roa > 0.12) pros.push("Efficient asset use — return on assets of " + (ratios.roa * 100).toFixed(1) + "%.");
-
-  if (ratios.priceToBook != null && ratios.priceToBook > 5) cons.push("Trading at " + ratios.priceToBook.toFixed(2) + "x its book value.");
-  if (ratios.trailingPE != null && ratios.trailingPE > 50) cons.push("Expensive valuation at a P/E of " + ratios.trailingPE.toFixed(0) + ".");
-  if (ratios.roe != null && ratios.roe < 0.10) cons.push("Low return on equity of " + (ratios.roe * 100).toFixed(1) + "%.");
-  if (de != null && de > 1.5) cons.push("High debt-to-equity of " + de.toFixed(2) + ".");
-  if ((ratios.dividendYield == null || ratios.dividendYield === 0) && latestAnnualNI != null && latestAnnualNI > 0) cons.push("Not paying a dividend despite reporting profits.");
-  if (ratios.profitMargin != null && ratios.profitMargin < 0.05 && ratios.profitMargin >= 0) cons.push("Thin profit margin of " + (ratios.profitMargin * 100).toFixed(1) + "%.");
-  if (latestAnnualNI != null && latestAnnualNI < 0) cons.push("Reported a net loss in the latest financial year.");
-
-  const prosConsEl = source === "crypto" ? null : E("div", { className: "panel", style: { flexShrink: 0 } },
-    E("h2", null, "ANALYSIS — PROS & CONS"),
-    (companyLoading && !company)
-      ? E("div", { className: "empty" }, "LOADING...")
-      : (pros.length === 0 && cons.length === 0)
-        ? E("div", { className: "empty" }, "NOT ENOUGH DATA FOR ANALYSIS")
-        : E("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 } },
-            E("div", null,
-              E("div", { style: { color: "var(--green)", fontSize: 11, fontWeight: 700, letterSpacing: 1, marginBottom: 6 } }, "▲ PROS"),
-              pros.length
-                ? E("ul", { style: { margin: 0, paddingLeft: 16, color: "#ccc", fontSize: 11.5, lineHeight: 1.7 } }, pros.map((p, i) => E("li", { key: i }, p)))
-                : E("div", { style: { color: "var(--dim)", fontSize: 11 } }, "—")
-            ),
-            E("div", null,
-              E("div", { style: { color: "var(--red)", fontSize: 11, fontWeight: 700, letterSpacing: 1, marginBottom: 6 } }, "▼ CONS"),
-              cons.length
-                ? E("ul", { style: { margin: 0, paddingLeft: 16, color: "#ccc", fontSize: 11.5, lineHeight: 1.7 } }, cons.map((c, i) => E("li", { key: i }, c)))
-                : E("div", { style: { color: "var(--dim)", fontSize: 11 } }, "—")
-            )
-          ),
-    E("div", { style: { color: "var(--dim)", fontSize: 10, marginTop: 10, fontStyle: "italic" } }, "Auto-generated from reported ratios — not investment advice.")
-  );
-
-  const growthCard = (title, cagrObj, ttm) => E("div", { className: "panel", style: { flex: 1, minWidth: 150 } },
-    E("div", { style: { color: "var(--amber)", fontSize: 10, letterSpacing: 1, marginBottom: 8 } }, title),
-    cagrObj
-      ? E("div", null,
-          E("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 } },
-            E("span", { style: { color: "var(--dim)" } }, cagrObj.years + "Y CAGR"),
-            E("span", { className: "mono-num " + (cagrObj.rate >= 0 ? "up" : "down") }, (cagrObj.rate >= 0 ? "+" : "") + (cagrObj.rate * 100).toFixed(1) + "%")
-          ),
-          ttm != null ? E("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 12 } },
-            E("span", { style: { color: "var(--dim)" } }, "TTM"),
-            E("span", { className: "mono-num " + (ttm >= 0 ? "up" : "down") }, (ttm >= 0 ? "+" : "") + (ttm * 100).toFixed(1) + "%")
-          ) : null
-        )
-      : E("div", { style: { color: "var(--dim)", fontSize: 11 } }, "N/A")
-  );
-  const growthRowEl = E("div", { style: { display: "flex", gap: 10, marginBottom: 10, flexWrap: "wrap" } },
-    growthCard("COMPOUNDED SALES GROWTH", revCagr, ratios.revenueGrowth),
-    growthCard("COMPOUNDED PROFIT GROWTH", profitCagr, null)
-  );
+  // Moving-average overlays computed from price data only (no fundamentals dependency)
+  const closes = chartData ? chartData.map(c => c.close).filter(v => v != null) : [];
+  const chartOverlays = [];
+  if (closes.length === (chartData ? chartData.length : 0)) {
+    const ma50 = sma(closes, 50);
+    const ma200 = sma(closes, 200);
+    if (ma50) chartOverlays.push({ values: ma50, color: "#3aa0ff", label: "MA 50" });
+    if (ma200) chartOverlays.push({ values: ma200, color: "#ffb300", label: "MA 200" });
+  }
+  const maHint = source !== "crypto" && chartType === "candles" && chartOverlays.length > 0;
 
   const newsEl = newsLoading
     ? E("div", { className: "empty" }, "LOADING NEWS...")
@@ -2090,252 +1926,6 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
           )
         );
 
-  const newsPanelEl = E("div", { className: "panel", style: { overflowY: "auto" } },
-    E("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 } },
-      E("h2", { style: { margin: 0 } }, "LATEST NEWS"),
-      E("button", {
-        onClick: () => loadNews(),
-        disabled: newsLoading,
-        style: {
-          background: "transparent", border: "1px solid var(--border)", color: "var(--dim)",
-          fontFamily: "inherit", fontSize: 10, letterSpacing: 1, padding: "3px 8px",
-          cursor: newsLoading ? "default" : "pointer", opacity: newsLoading ? 0.5 : 1,
-          transition: "color 0.15s, border-color 0.15s"
-        },
-        onMouseEnter: (e) => { if (!newsLoading) { e.target.style.color = "var(--amber)"; e.target.style.borderColor = "var(--amber)"; } },
-        onMouseLeave: (e) => { e.target.style.color = "var(--dim)"; e.target.style.borderColor = "var(--border)"; }
-      }, newsLoading ? "↻ ..." : "↻ REFRESH")
-    ),
-    newsEl
-  );
-
-  const closes = chartData ? chartData.map(c => c.close).filter(v => v != null) : [];
-  const chartOverlays = [];
-  if (closes.length === (chartData ? chartData.length : 0)) {
-    const ma50 = sma(closes, 50);
-    const ma200 = sma(closes, 200);
-    if (ma50) chartOverlays.push({ values: ma50, color: "#3aa0ff", label: "MA 50" });
-    if (ma200) chartOverlays.push({ values: ma200, color: "#ffb300", label: "MA 200" });
-  }
-  const maHint = source !== "crypto" && chartType === "candles" && chartOverlays.length > 0;
-
-  const chartPanelEl = E("div", { className: "panel", style: { flexShrink: 0 } },
-    E("h2", null, "PRICE CHART"),
-    chartLoading
-      ? E("div", { className: "empty" }, "LOADING CHART...")
-      : E("div", { className: "chart-wrap" }, E(Chart, { chartType, ohlc: chartData, overlays: chartOverlays })),
-    E(ChartControls, { chartType, setChartType, range: chartRange, setRange: setChartRange }),
-    maHint && E("div", { style: { color: "var(--dim)", fontSize: 10, marginTop: 4, fontStyle: "italic" } }, "Switch to LINE to overlay 50 & 200-period moving averages."),
-    !chartLoading && E(MarketSentiment, { price, fiftyTwoWeekHigh: d.fiftyTwoWeekHigh, fiftyTwoWeekLow: d.fiftyTwoWeekLow, ohlc: chartData })
-  );
-
-  // ── Key ratios block (screener-style) ──
-  const ratioCell = (k, v) => E("div", null, E("div", { className: "k" }, k), E("div", { className: "v mono-num" }, v));
-  const keyRatiosEl = E("div", { className: "panel", style: { flexShrink: 0 } },
-    E("h2", null, "KEY RATIOS"),
-    companyLoading && !company
-      ? E("div", { className: "empty" }, "LOADING...")
-      : E("div", { className: "detail-grid" },
-          ratioCell("MARKET CAP", fmtRev(ratios.marketCap)),
-          ratioCell("P/E (TTM)", ratios.trailingPE != null ? ratios.trailingPE.toFixed(2) : "--"),
-          ratioCell("P/E (FWD)", ratios.forwardPE != null ? ratios.forwardPE.toFixed(2) : "--"),
-          ratioCell("BOOK VALUE", ratios.bookValue != null ? curSym + fmtInr(ratios.bookValue) : "--"),
-          ratioCell("PRICE/BOOK", ratios.priceToBook != null ? ratios.priceToBook.toFixed(2) : "--"),
-          ratioCell("EPS (TTM)", ratios.eps != null ? curSym + fmtInr(ratios.eps) : "--"),
-          ratioCell("ROE", pctOf(ratios.roe)),
-          ratioCell("ROA", pctOf(ratios.roa)),
-          ratioCell("DEBT / EQUITY", ratios.debtToEquity != null ? (ratios.debtToEquity / 100).toFixed(2) : "--"),
-          ratioCell("PROFIT MARGIN", pctOf(ratios.profitMargin)),
-          ratioCell("REV GROWTH", pctOf(ratios.revenueGrowth)),
-          ratioCell("DIV YIELD", ratios.dividendYield != null ? pctOf(ratios.dividendYield) : "0.00%")
-        )
-  );
-
-  // ── About / company profile ──
-  const aboutMeta = [
-    profile.sector, profile.industry,
-    profile.employees ? profile.employees.toLocaleString("en-US") + " employees" : null,
-    profile.city && profile.country ? profile.city + ", " + profile.country : profile.country,
-    profile.exchange
-  ].filter(Boolean).join("  ·  ");
-  const aboutEl = E("div", { className: "panel", style: { flexShrink: 0 } },
-    E("h2", null, "ABOUT"),
-    companyLoading && !company
-      ? E("div", { className: "empty" }, "LOADING...")
-      : !profile.summary
-        ? E("div", { className: "empty" }, "NO COMPANY PROFILE AVAILABLE")
-        : E("div", null,
-            E("div", { style: { color: "#ccc", fontSize: 12, lineHeight: 1.6, marginBottom: 10 } }, profile.summary),
-            aboutMeta && E("div", { style: { color: "var(--dim)", fontSize: 11, marginBottom: 6 } }, aboutMeta),
-            profile.website && E("a", { href: profile.website, target: "_blank", rel: "noopener noreferrer", style: { color: "var(--cyan)", fontSize: 11, textDecoration: "none" } }, profile.website)
-          )
-  );
-
-  // Shown when the fundamentals provider is rate-limiting the server
-  const unavailableEl = (extraNote) => E("div", { className: "panel", style: { flexShrink: 0 } },
-    E("div", { style: { padding: "26px 16px", textAlign: "center" } },
-      E("div", { style: { color: "var(--amber)", fontSize: 13, fontWeight: 700, letterSpacing: 1, marginBottom: 10 } }, "FUNDAMENTALS TEMPORARILY UNAVAILABLE"),
-      E("div", { style: { color: "var(--dim)", fontSize: 12, lineHeight: 1.7, marginBottom: 18, maxWidth: 480, marginLeft: "auto", marginRight: "auto" } },
-        (extraNote || "Company profile, ratios and financial statements") + " couldn't load — the data provider is rate-limiting our server. Price, chart, sentiment and news are live and unaffected. This usually clears in a minute or two.",
-      ),
-      E("button", {
-        onClick: retryFundamentals,
-        style: { background: "var(--amber)", border: "none", color: "#000", fontFamily: "inherit", fontSize: 11, fontWeight: 700, letterSpacing: 1, padding: "8px 20px", cursor: "pointer", borderRadius: 2 }
-      }, "↻ RETRY")
-    )
-  );
-
-  // ── Financial statements table ──
-  const financialTable = (title, rows) => {
-    if (!rows || rows.length === 0) return null;
-    const maxRev = Math.max(...rows.map(r => Math.abs(r.revenue || 0)), 1);
-    return E("div", { className: "panel", style: { flexShrink: 0 } },
-      E("h2", null, title),
-      E("table", null,
-        E("thead", null,
-          E("tr", null,
-            E("th", null, "PERIOD"),
-            E("th", { style: { textAlign: "right" } }, "REVENUE"),
-            E("th", { style: { textAlign: "right" } }, "NET PROFIT"),
-            E("th", { style: { textAlign: "right" } }, "OPER. INCOME"),
-            E("th", { style: { textAlign: "right" } }, "NET MARGIN")
-          )
-        ),
-        E("tbody", null,
-          rows.map((r, i) => {
-            const margin = (r.revenue && r.netIncome != null) ? (r.netIncome / r.revenue) * 100 : null;
-            return E("tr", { key: i },
-              E("td", { style: { position: "relative" } },
-                E("div", { style: { position: "absolute", left: 0, top: 0, bottom: 0, width: (Math.abs(r.revenue || 0) / maxRev * 100) + "%", background: "rgba(0,180,255,0.10)", zIndex: 0 } }),
-                E("span", { style: { position: "relative", zIndex: 1, color: "var(--cyan)" } }, r.period)
-              ),
-              E("td", { className: "mono-num", style: { textAlign: "right" } }, fmtRev(r.revenue)),
-              E("td", { className: "mono-num " + (r.netIncome >= 0 ? "up" : "down"), style: { textAlign: "right" } }, fmtRev(r.netIncome)),
-              E("td", { className: "mono-num", style: { textAlign: "right" } }, fmtRev(r.operatingIncome)),
-              E("td", { className: "mono-num " + (margin != null && margin >= 0 ? "up" : "down"), style: { textAlign: "right" } }, margin != null ? margin.toFixed(1) + "%" : "--")
-            );
-          })
-        )
-      )
-    );
-  };
-
-  // Generic statement table (balance sheet, cash flow)
-  const stmtTable = (title, rows, cols) => {
-    if (!rows || rows.length === 0) return null;
-    return E("div", { className: "panel", style: { flexShrink: 0 } },
-      E("h2", null, title),
-      E("table", null,
-        E("thead", null, E("tr", null,
-          E("th", null, "PERIOD"),
-          ...cols.map(c => E("th", { key: c.key, style: { textAlign: "right" } }, c.label))
-        )),
-        E("tbody", null, rows.map((r, i) => E("tr", { key: i },
-          E("td", { style: { color: "var(--cyan)" } }, r.period),
-          ...cols.map(c => {
-            const v = r[c.key];
-            const cls = c.colorSign && v != null ? (v >= 0 ? "up" : "down") : "";
-            return E("td", { key: c.key, className: "mono-num " + cls, style: { textAlign: "right" } }, fmtRev(v));
-          })
-        )))
-      )
-    );
-  };
-
-  const hasFin = company && (
-    (company.quarterly && company.quarterly.length) ||
-    (company.annual && company.annual.length) ||
-    (company.balanceSheet && company.balanceSheet.length) ||
-    (company.cashFlow && company.cashFlow.length)
-  );
-  const financialsContent = companyLoading && !company
-    ? E("div", { className: "empty" }, "LOADING FINANCIALS...")
-    : !hasFin
-      ? unavailableEl("Quarterly, annual, balance-sheet and cash-flow statements")
-      : E("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
-          growthRowEl,
-          financialTable("QUARTERLY RESULTS", company.quarterly),
-          financialTable("ANNUAL RESULTS", company.annual),
-          stmtTable("BALANCE SHEET", company.balanceSheet, [
-            { label: "TOTAL ASSETS", key: "totalAssets" },
-            { label: "EQUITY", key: "equity" },
-            { label: "TOTAL DEBT", key: "totalDebt" },
-            { label: "CASH", key: "cash" }
-          ]),
-          stmtTable("CASH FLOW", company.cashFlow, [
-            { label: "OPERATING", key: "operating", colorSign: true },
-            { label: "INVESTING", key: "investing", colorSign: true },
-            { label: "FINANCING", key: "financing", colorSign: true },
-            { label: "FREE CASH FLOW", key: "freeCashFlow", colorSign: true }
-          ])
-        );
-
-  // ── Peers comparison ──
-  const peersContent = peersLoading
-    ? E("div", { className: "empty" }, "LOADING PEERS...")
-    : (!peers || peers.length === 0)
-      ? E("div", { className: "empty" }, "NO PEER GROUP DEFINED FOR THIS SECURITY")
-      : E("div", { className: "panel" },
-          E("h2", null, "PEER COMPARISON"),
-          E("table", null,
-            E("thead", null,
-              E("tr", null,
-                E("th", null, "COMPANY"),
-                E("th", { style: { textAlign: "right" } }, "PRICE"),
-                E("th", { style: { textAlign: "right" } }, "CHG %"),
-                E("th", { style: { textAlign: "right" } }, "P/E"),
-                E("th", { style: { textAlign: "right" } }, "MKT CAP")
-              )
-            ),
-            E("tbody", null,
-              peers.slice().sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0)).map((p) =>
-                E("tr", { key: p.symbol, className: p.isSelf ? "selected" : "" },
-                  E("td", { style: { color: p.isSelf ? "var(--amber)" : "var(--cyan)", fontWeight: p.isSelf ? 700 : 400 } }, p.label + (p.isSelf ? "  ◄" : "")),
-                  E("td", { className: "mono-num", style: { textAlign: "right" } }, symOf(p.currency) + fmtInr(p.price)),
-                  E("td", { className: "mono-num " + (p.changePct >= 0 ? "up" : "down"), style: { textAlign: "right" } }, p.changePct != null ? (p.changePct >= 0 ? "+" : "") + p.changePct.toFixed(2) + "%" : "--"),
-                  E("td", { className: "mono-num", style: { textAlign: "right" } }, p.pe != null ? p.pe.toFixed(1) : "--"),
-                  E("td", { className: "mono-num", style: { textAlign: "right" } }, p.marketCap != null ? symOf(p.currency) + fmtCompact(p.marketCap) : "--")
-                )
-              )
-            )
-          )
-        );
-
-  // Crypto keeps the simple two-column layout (no company data / financials / peers)
-  const cryptoBody = E("div", { style: { flex: 1, minHeight: 0, overflow: "hidden", padding: 10, display: "grid", gridTemplateColumns: "3fr 2fr", gridTemplateRows: "1fr", gap: 10, alignItems: "stretch" } },
-    E("div", { style: { display: "flex", flexDirection: "column", gap: 10, overflowY: "auto", minHeight: 0 } }, chartPanelEl),
-    newsPanelEl
-  );
-
-  const tab = (key, txt) => E("span", {
-    className: "tab" + (detailTab === key ? " active" : ""),
-    onClick: () => setDetailTab(key)
-  }, txt);
-
-  const overviewBody = E("div", { style: { flex: 1, minHeight: 0, overflow: "hidden", padding: 10, display: "grid", gridTemplateColumns: "3fr 2fr", gridTemplateRows: "1fr", gap: 10, alignItems: "stretch" } },
-    E("div", { style: { display: "flex", flexDirection: "column", gap: 10, overflowY: "auto", minHeight: 0 } },
-      chartPanelEl,
-      ...(fundamentalsUnavailable
-        ? [unavailableEl(null)]
-        : [prosConsEl, keyRatiosEl, aboutEl,
-           E("div", { className: "panel", style: { flexShrink: 0 } }, E(FundamentalsGrid, { d, fundamentals, currency, isInr }))])
-    ),
-    newsPanelEl
-  );
-
-  const tabbedBody = E("div", { style: { display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" } },
-    E("div", { className: "tabs", style: { flexShrink: 0, padding: "0 10px" } },
-      tab("overview", "OVERVIEW"),
-      tab("financials", "FINANCIALS"),
-      tab("peers", "PEERS")
-    ),
-    detailTab === "overview"
-      ? overviewBody
-      : E("div", { style: { flex: 1, minHeight: 0, overflowY: "auto", padding: 10 } },
-          detailTab === "financials" ? financialsContent : peersContent
-        )
-  );
-
   return E("div", { style: { display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden", background: "var(--bg)" } },
     E("div", { style: { background: "var(--panel)", borderBottom: "1px solid var(--border)", padding: "8px 14px", display: "flex", alignItems: "center", gap: 12, flexShrink: 0, flexWrap: "wrap" } },
       E("button", { onClick: onBack, style: { background: "transparent", border: "1px solid var(--amber)", color: "var(--amber)", fontFamily: "inherit", fontSize: 11, fontWeight: 700, letterSpacing: 1, padding: "3px 10px", cursor: "pointer", whiteSpace: "nowrap" } }, "← BACK"),
@@ -2348,7 +1938,40 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
         (changePct >= 0 ? "▲ +" : "▼ ") + Math.abs(changePct || 0).toFixed(2) + "%"
       )
     ),
-    source === "crypto" ? cryptoBody : tabbedBody
+    E("div", { style: { flex: 1, minHeight: 0, overflow: "hidden", padding: 10, display: "grid", gridTemplateColumns: "3fr 2fr", gridTemplateRows: "1fr", gap: 10, alignItems: "stretch" } },
+      E("div", { style: { display: "flex", flexDirection: "column", gap: 10, overflowY: "auto", minHeight: 0 } },
+        E("div", { className: "panel", style: { flexShrink: 0 } },
+          E("h2", null, "PRICE CHART"),
+          chartLoading
+            ? E("div", { className: "empty" }, "LOADING CHART...")
+            : E("div", { className: "chart-wrap" }, E(Chart, { chartType, ohlc: chartData, overlays: chartOverlays })),
+          E(ChartControls, { chartType, setChartType, range: chartRange, setRange: setChartRange }),
+          maHint && E("div", { style: { color: "var(--dim)", fontSize: 10, marginTop: 4, fontStyle: "italic" } }, "Switch to LINE to overlay 50 & 200-period moving averages."),
+          !chartLoading && E(MarketSentiment, { price, fiftyTwoWeekHigh: d.fiftyTwoWeekHigh, fiftyTwoWeekLow: d.fiftyTwoWeekLow, ohlc: chartData })
+        ),
+        source !== "crypto" && E("div", { className: "panel", style: { flex: 1, overflowY: "auto" } },
+          E(FundamentalsGrid, { d, fundamentals, currency, isInr })
+        )
+      ),
+      E("div", { className: "panel", style: { overflowY: "auto" } },
+        E("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 } },
+          E("h2", { style: { margin: 0 } }, "LATEST NEWS"),
+          E("button", {
+            onClick: () => loadNews(),
+            disabled: newsLoading,
+            style: {
+              background: "transparent", border: "1px solid var(--border)", color: "var(--dim)",
+              fontFamily: "inherit", fontSize: 10, letterSpacing: 1, padding: "3px 8px",
+              cursor: newsLoading ? "default" : "pointer", opacity: newsLoading ? 0.5 : 1,
+              transition: "color 0.15s, border-color 0.15s"
+            },
+            onMouseEnter: (e) => { if (!newsLoading) { e.target.style.color = "var(--amber)"; e.target.style.borderColor = "var(--amber)"; } },
+            onMouseLeave: (e) => { e.target.style.color = "var(--dim)"; e.target.style.borderColor = "var(--border)"; }
+          }, newsLoading ? "↻ ..." : "↻ REFRESH")
+        ),
+        newsEl
+      )
+    )
   );
 }
 
