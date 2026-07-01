@@ -1106,7 +1106,8 @@ const TIMEFRAMES = [
   { key: "30m", label: "30M" },
   { key: "1d", label: "1D" },
   { key: "1w", label: "1W" },
-  { key: "1mo", label: "1M" }
+  { key: "1mo", label: "1M" },
+  { key: "1y", label: "1Y" }
 ];
 
 const YAHOO_RANGE_MAP = {
@@ -1114,7 +1115,8 @@ const YAHOO_RANGE_MAP = {
   "30m": { range: "5d", interval: "30m" },
   "1d": { range: "1mo", interval: "1d" },
   "1w": { range: "6mo", interval: "1wk" },
-  "1mo": { range: "5y", interval: "1mo" }
+  "1mo": { range: "5y", interval: "1mo" },
+  "1y": { range: "1y", interval: "1d" }
 };
 
 const COINGECKO_DAYS_MAP = {
@@ -1122,7 +1124,8 @@ const COINGECKO_DAYS_MAP = {
   "30m": 1,
   "1d": 30,
   "1w": 90,
-  "1mo": 365
+  "1mo": 365,
+  "1y": 365
 };
 
 function ChartControls({ chartType, setChartType, range, setRange }) {
@@ -1195,12 +1198,24 @@ function Candlestick({ ohlc }) {
   );
 }
 
-function Chart({ chartType, ohlc }) {
+function sma(arr, period) {
+  if (!arr || arr.length < period) return null;
+  const out = new Array(arr.length).fill(null);
+  let sum = 0;
+  for (let i = 0; i < arr.length; i++) {
+    sum += arr[i];
+    if (i >= period) sum -= arr[i - period];
+    if (i >= period - 1) out[i] = sum / period;
+  }
+  return out;
+}
+
+function Chart({ chartType, ohlc, overlays }) {
   if (chartType === "candles") {
     return E(Candlestick, { ohlc });
   }
   const points = ohlc ? ohlc.map((c) => c.close) : null;
-  return E(Sparkline, { points });
+  return E(Sparkline, { points, overlays });
 }
 
 function computeSentiment({ price, fiftyTwoWeekHigh, fiftyTwoWeekLow, ohlc }) {
@@ -1409,20 +1424,19 @@ function FundamentalsGrid({ d, fundamentals, currency, isInr }) {
   );
 }
 
-function Sparkline({ points }) {
+function Sparkline({ points, overlays }) {
   if (!points || points.length < 2) {
     return E("div", { className: "empty" }, "NO CHART DATA");
   }
   const chartW = 540, labelW = 70, w = chartW + labelW, h = 150, pad = 4;
-  const min = Math.min(...points);
-  const max = Math.max(...points);
+  const activeOverlays = (overlays || []).filter(o => o && o.values && o.values.length === points.length && o.values.some(v => v != null));
+  let min = Math.min(...points);
+  let max = Math.max(...points);
+  activeOverlays.forEach(o => o.values.forEach(v => { if (v != null) { if (v < min) min = v; if (v > max) max = v; } }));
   const range = max - min || 1;
   const stepX = (chartW - pad * 2) / (points.length - 1);
-  const coords = points.map((p, i) => {
-    const x = pad + i * stepX;
-    const y = h - pad - ((p - min) / range) * (h - pad * 2);
-    return [x, y];
-  });
+  const yOf = (p) => h - pad - ((p - min) / range) * (h - pad * 2);
+  const coords = points.map((p, i) => [pad + i * stepX, yOf(p)]);
   const d = coords.map((c, i) => (i === 0 ? "M" : "L") + c[0].toFixed(1) + "," + c[1].toFixed(1)).join(" ");
   const last = points[points.length - 1];
   const first = points[0];
@@ -1431,9 +1445,29 @@ function Sparkline({ points }) {
   const lastCoord = coords[coords.length - 1];
   const currentY = lastCoord[1];
   const labelY = Math.max(10, Math.min(h - 10, currentY));
+
+  const overlayPaths = activeOverlays.map((o, oi) => {
+    let dd = "", started = false;
+    o.values.forEach((v, i) => {
+      if (v == null) return;
+      const x = pad + i * stepX, y = yOf(v);
+      dd += (started ? "L" : "M") + x.toFixed(1) + "," + y.toFixed(1) + " ";
+      started = true;
+    });
+    return E("path", { key: "ov" + oi, d: dd, fill: "none", stroke: o.color, strokeWidth: "1.2", opacity: "0.9" });
+  });
+
+  const legend = activeOverlays.length
+    ? E("g", null, activeOverlays.map((o, oi) =>
+        E("text", { key: "lg" + oi, x: pad + 2, y: 12 + oi * 12, fill: o.color, fontSize: "9", fontWeight: "700", fontFamily: "monospace" }, o.label)
+      ))
+    : null;
+
   return E("svg", { viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: "none", style: { overflow: "visible" } },
     E("path", { d: areaD, fill: color, opacity: "0.08", stroke: "none" }),
     E("path", { d, fill: "none", stroke: color, strokeWidth: "1.5" }),
+    ...overlayPaths,
+    legend,
     E("line", { x1: pad, x2: chartW, y1: currentY, y2: currentY, stroke: color, strokeWidth: "1", strokeDasharray: "4 3", opacity: "0.85" }),
     E("rect", { x: chartW + 2, y: labelY - 9, width: labelW - 4, height: 16, fill: color, rx: "2" }),
     E("text", { x: chartW + labelW / 2 + 1, y: labelY + 4, textAnchor: "middle", fill: "#000", fontSize: "9", fontWeight: "700", fontFamily: "monospace" }, fmtChartPrice(last))
@@ -2068,12 +2102,23 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
     newsEl
   );
 
+  const closes = chartData ? chartData.map(c => c.close).filter(v => v != null) : [];
+  const chartOverlays = [];
+  if (closes.length === (chartData ? chartData.length : 0)) {
+    const ma50 = sma(closes, 50);
+    const ma200 = sma(closes, 200);
+    if (ma50) chartOverlays.push({ values: ma50, color: "#3aa0ff", label: "MA 50" });
+    if (ma200) chartOverlays.push({ values: ma200, color: "#ffb300", label: "MA 200" });
+  }
+  const maHint = source !== "crypto" && chartType === "candles" && chartOverlays.length > 0;
+
   const chartPanelEl = E("div", { className: "panel", style: { flexShrink: 0 } },
     E("h2", null, "PRICE CHART"),
     chartLoading
       ? E("div", { className: "empty" }, "LOADING CHART...")
-      : E("div", { className: "chart-wrap" }, E(Chart, { chartType, ohlc: chartData })),
+      : E("div", { className: "chart-wrap" }, E(Chart, { chartType, ohlc: chartData, overlays: chartOverlays })),
     E(ChartControls, { chartType, setChartType, range: chartRange, setRange: setChartRange }),
+    maHint && E("div", { style: { color: "var(--dim)", fontSize: 10, marginTop: 4, fontStyle: "italic" } }, "Switch to LINE to overlay 50 & 200-period moving averages."),
     !chartLoading && E(MarketSentiment, { price, fiftyTwoWeekHigh: d.fiftyTwoWeekHigh, fiftyTwoWeekLow: d.fiftyTwoWeekLow, ohlc: chartData })
   );
 
