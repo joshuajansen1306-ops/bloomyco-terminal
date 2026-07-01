@@ -837,8 +837,12 @@
     .summary-stat { font-size: 11px; }
     .summary-text { font-size: 10px; }
 
-    /* Tables — horizontal scroll */
+    /* Tables — horizontal scroll, keep cells on one line */
     .panel > table, table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table th, table td { white-space: nowrap; }
+    /* Bigger tap targets in tables and lists */
+    table td, table th { padding-top: 7px; padding-bottom: 7px; }
+    .tab, .chart-toggle, .topbar-btn, .index-card { min-height: 40px; }
 
     /* Heatmap */
     .heatmap-grid { grid-template-columns: 1fr 1fr; }
@@ -1855,7 +1859,21 @@ function LoginScreen({ onLogin }) {
   );
 }
 
+function useIsMobile(bp) {
+  const q = "(max-width: " + (bp || 640) + "px)";
+  const [m, setM] = useState(() => typeof window !== "undefined" && window.matchMedia(q).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(q);
+    const h = (e) => setM(e.matches);
+    if (mq.addEventListener) mq.addEventListener("change", h); else mq.addListener(h);
+    setM(mq.matches);
+    return () => { if (mq.removeEventListener) mq.removeEventListener("change", h); else mq.removeListener(h); };
+  }, [q]);
+  return m;
+}
+
 function StockDetailPage({ symbol, source, rowData, onBack }) {
+  const isMobile = useIsMobile();
   const [chartData, setChartData] = useState(null);
   const [chartRange, setChartRange] = useState("1d");
   const [chartType, setChartType] = useState("candles");
@@ -1963,9 +1981,11 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
           )
         );
 
-  return E("div", { style: { display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden", background: "var(--bg)" } },
-    E("div", { style: { background: "var(--panel)", borderBottom: "1px solid var(--border)", padding: "8px 14px", display: "flex", alignItems: "center", gap: 12, flexShrink: 0, flexWrap: "wrap" } },
-      E("button", { onClick: onBack, style: { background: "transparent", border: "1px solid var(--amber)", color: "var(--amber)", fontFamily: "inherit", fontSize: 11, fontWeight: 700, letterSpacing: 1, padding: "3px 10px", cursor: "pointer", whiteSpace: "nowrap" } }, "← BACK"),
+  return E("div", { style: isMobile
+      ? { display: "flex", flexDirection: "column", background: "var(--bg)" }
+      : { display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden", background: "var(--bg)" } },
+    E("div", { style: { background: "var(--panel)", borderBottom: "1px solid var(--border)", padding: "8px 14px", display: "flex", alignItems: "center", gap: 12, flexShrink: 0, flexWrap: "wrap", position: isMobile ? "sticky" : "static", top: 0, zIndex: 5 } },
+      E("button", { onClick: onBack, style: { background: "transparent", border: "1px solid var(--amber)", color: "var(--amber)", fontFamily: "inherit", fontSize: 11, fontWeight: 700, letterSpacing: 1, padding: "5px 12px", cursor: "pointer", whiteSpace: "nowrap" } }, "← BACK"),
       E("span", { style: { color: "var(--cyan)", fontSize: 17, fontWeight: 700 } }, label),
       E("span", { style: { color: "var(--dim)", fontSize: 12 } }, name),
       E("span", { className: "mono-num", style: { fontSize: 15, fontWeight: 700, marginLeft: "auto" } },
@@ -1975,8 +1995,12 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
         (changePct >= 0 ? "▲ +" : "▼ ") + Math.abs(changePct || 0).toFixed(2) + "%"
       )
     ),
-    E("div", { style: { flex: 1, minHeight: 0, overflow: "hidden", padding: 10, display: "grid", gridTemplateColumns: "3fr 2fr", gridTemplateRows: "1fr", gap: 10, alignItems: "stretch" } },
-      E("div", { style: { display: "flex", flexDirection: "column", gap: 10, overflowY: "auto", minHeight: 0 } },
+    E("div", { style: isMobile
+        ? { padding: 8, display: "flex", flexDirection: "column", gap: 10 }
+        : { flex: 1, minHeight: 0, overflow: "hidden", padding: 10, display: "grid", gridTemplateColumns: "3fr 2fr", gridTemplateRows: "1fr", gap: 10, alignItems: "stretch" } },
+      E("div", { style: isMobile
+          ? { display: "flex", flexDirection: "column", gap: 10 }
+          : { display: "flex", flexDirection: "column", gap: 10, overflowY: "auto", minHeight: 0 } },
         E("div", { className: "panel", style: { flexShrink: 0 } },
           E("h2", null, "PRICE CHART"),
           chartLoading
@@ -1986,11 +2010,11 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
           maHint && E("div", { style: { color: "var(--dim)", fontSize: 10, marginTop: 4, fontStyle: "italic" } }, "Switch to LINE to overlay 50 & 200-period moving averages."),
           !chartLoading && E(MarketSentiment, { price, fiftyTwoWeekHigh: d.fiftyTwoWeekHigh, fiftyTwoWeekLow: d.fiftyTwoWeekLow, ohlc: chartData })
         ),
-        source !== "crypto" && E("div", { className: "panel", style: { flex: 1, overflowY: "auto" } },
+        source !== "crypto" && E("div", { className: "panel", style: isMobile ? { flexShrink: 0 } : { flex: 1, overflowY: "auto" } },
           E(FundamentalsGrid, { d, fundamentals, currency, isInr })
         )
       ),
-      E("div", { className: "panel", style: { overflowY: "auto" } },
+      E("div", { className: "panel", style: isMobile ? { flexShrink: 0 } : { overflowY: "auto" } },
         E("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 } },
           E("h2", { style: { margin: 0 } }, "LATEST NEWS"),
           E("button", {
@@ -2208,6 +2232,7 @@ function AppWrapper() {
 }
 
 function App({ onLogout, user }) {
+  const isMobile = useIsMobile();
   const [detailView, setDetailView] = useState(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [tab, setTab] = useState("india");
@@ -4128,7 +4153,9 @@ function App({ onLogout, user }) {
       E("div", { className: "terminal" },
         topbarEl,
         tickerTapeEl,
-        E("div", { style: { flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" } },
+        E("div", { style: isMobile
+            ? { display: "flex", flexDirection: "column" }
+            : { flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" } },
           E(StockDetailPage, {
             symbol: detailView.symbol,
             source: detailView.source,
