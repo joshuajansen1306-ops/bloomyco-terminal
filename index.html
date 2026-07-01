@@ -1285,6 +1285,26 @@ const COMMODITY_SYMBOLS = [
   { symbol: "ZS=F",  label: "SOYBEANS",   unit: "USc/bu",     group: "AGRICULTURE" },
 ];
 
+const FUND_SYMBOLS = [
+  { symbol: "NIFTYBEES.NS",  label: "NIFTY BEES",     group: "INDIAN ETFS",  currency: "INR" },
+  { symbol: "BANKBEES.NS",   label: "BANK BEES",      group: "INDIAN ETFS",  currency: "INR" },
+  { symbol: "GOLDBEES.NS",   label: "GOLD BEES",      group: "INDIAN ETFS",  currency: "INR" },
+  { symbol: "JUNIORBEES.NS", label: "JUNIOR BEES",    group: "INDIAN ETFS",  currency: "INR" },
+  { symbol: "EMBASSY.NS",    label: "EMBASSY REIT",   group: "INDIAN REITS", currency: "INR" },
+  { symbol: "MINDSPACE.NS",  label: "MINDSPACE REIT", group: "INDIAN REITS", currency: "INR" },
+  { symbol: "BIRET.NS",      label: "BROOKFIELD REIT",group: "INDIAN REITS", currency: "INR" },
+  { symbol: "SPY",           label: "SPY S&P 500",    group: "US ETFS",      currency: "USD" },
+  { symbol: "QQQ",           label: "QQQ NASDAQ 100", group: "US ETFS",      currency: "USD" },
+  { symbol: "VOO",           label: "VOO S&P 500",    group: "US ETFS",      currency: "USD" },
+  { symbol: "VTI",           label: "VTI TOTAL MKT",  group: "US ETFS",      currency: "USD" },
+  { symbol: "GLD",           label: "GLD GOLD",       group: "US ETFS",      currency: "USD" },
+  { symbol: "O",             label: "REALTY INCOME",  group: "US REITS",     currency: "USD" },
+  { symbol: "VNQ",           label: "VNQ REAL ESTATE",group: "US REITS",     currency: "USD" },
+  { symbol: "PLD",           label: "PROLOGIS",       group: "US REITS",     currency: "USD" },
+  { symbol: "AMT",           label: "AMER TOWER",     group: "US REITS",     currency: "USD" },
+  { symbol: "SPG",           label: "SIMON PROPERTY", group: "US REITS",     currency: "USD" },
+];
+
 function fxToInr(currency, fxRates) {
   if (!currency || currency === "INR") return 1;
   if (currency === "GBp") return (fxRates.GBP || 0) / 100;
@@ -2201,6 +2221,12 @@ function App({ onLogout, user }) {
   const [commoditiesError, setCommoditiesError] = useState(null);
   const [commoditiesLastUpdate, setCommoditiesLastUpdate] = useState(null);
 
+  const [funds, setFunds] = useState([]);
+  const [selectedFund, setSelectedFund] = useState("NIFTYBEES.NS");
+  const [fundsLoading, setFundsLoading] = useState(true);
+  const [fundsError, setFundsError] = useState(null);
+  const [fundsLastUpdate, setFundsLastUpdate] = useState(null);
+
   const [india, setIndia] = useState([]);
   const [selectedIndia, setSelectedIndia] = useState("^NSEI");
   const [indiaError, setIndiaError] = useState(null);
@@ -2418,6 +2444,35 @@ function App({ onLogout, user }) {
       setCommoditiesError(e.message || "fetch failed");
     } finally {
       setCommoditiesLoading(false);
+    }
+  }, []);
+
+  const fetchFunds = useCallback(async () => {
+    try {
+      const results = await Promise.all(
+        FUND_SYMBOLS.map((s) =>
+          fetch(`${LOCAL_PROXY_BASE}/api/yahoo?symbol=${encodeURIComponent(s.symbol)}`)
+            .then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+            .then((data) => {
+              const result = data.chart && data.chart.result && data.chart.result[0];
+              if (!result) throw new Error("no data");
+              const m = result.meta;
+              const price = m.regularMarketPrice;
+              const prevClose = m.previousClose !== undefined ? m.previousClose : m.chartPreviousClose;
+              const change = price !== undefined && prevClose !== undefined ? price - prevClose : null;
+              const changePct = change !== null && prevClose ? (change / prevClose) * 100 : null;
+              return { symbol: s.symbol, label: s.label, group: s.group, currency: s.currency, price, prevClose, change, changePct, high: m.regularMarketDayHigh, low: m.regularMarketDayLow, open: m.regularMarketOpen, fiftyTwoWeekHigh: m.fiftyTwoWeekHigh, fiftyTwoWeekLow: m.fiftyTwoWeekLow };
+            })
+            .catch(() => ({ symbol: s.symbol, label: s.label, group: s.group, currency: s.currency, error: true }))
+        )
+      );
+      setFunds(results);
+      setFundsError(null);
+      setFundsLastUpdate(new Date());
+    } catch (e) {
+      setFundsError(e.message || "fetch failed");
+    } finally {
+      setFundsLoading(false);
     }
   }, []);
 
@@ -2733,6 +2788,12 @@ function App({ onLogout, user }) {
   }, [fetchCommodities]);
 
   useEffect(() => {
+    fetchFunds();
+    const t = setInterval(fetchFunds, 60000);
+    return () => clearInterval(t);
+  }, [fetchFunds]);
+
+  useEffect(() => {
     if (tab !== "india") return;
     fetchIndiaChart(selectedIndia, chartRange);
   }, [selectedIndia, tab, chartRange, fetchIndiaChart]);
@@ -2740,7 +2801,8 @@ function App({ onLogout, user }) {
   useEffect(() => {
     if (tab === "stocks") fetchStocksChart(selectedStock, chartRange);
     else if (tab === "commodities") fetchStocksChart(selectedCommodity, chartRange);
-  }, [selectedStock, selectedCommodity, tab, chartRange, fetchStocksChart]);
+    else if (tab === "funds") fetchStocksChart(selectedFund, chartRange);
+  }, [selectedStock, selectedCommodity, selectedFund, tab, chartRange, fetchStocksChart]);
 
   useEffect(() => {
     if (tab !== "search" || !selectedSearchResult) return;
@@ -2769,13 +2831,15 @@ function App({ onLogout, user }) {
         ? () => fetchStocksChart(selectedStock, chartRange)
         : tab === "commodities"
           ? () => fetchStocksChart(selectedCommodity, chartRange)
-          : tab === "search" && selectedSearchResult
-            ? () => fetchSearchChart(selectedSearchResult.symbol, chartRange)
-            : null;
+          : tab === "funds"
+            ? () => fetchStocksChart(selectedFund, chartRange)
+            : tab === "search" && selectedSearchResult
+              ? () => fetchSearchChart(selectedSearchResult.symbol, chartRange)
+              : null;
     if (!fn) return;
     const t = setInterval(fn, intervalMs);
     return () => clearInterval(t);
-  }, [marketStatus, tab, chartRange, selectedIndia, selectedStock, selectedCommodity, selectedSearchResult,
+  }, [marketStatus, tab, chartRange, selectedIndia, selectedStock, selectedCommodity, selectedFund, selectedSearchResult,
       fetchIndiaChart, fetchStocksChart, fetchSearchChart]);
 
   // Faster price refresh when market is open
@@ -3508,6 +3572,52 @@ function App({ onLogout, user }) {
           })
   );
 
+  const FUND_GROUPS = ["INDIAN ETFS", "INDIAN REITS", "US ETFS", "US REITS"];
+  const fundSym = (cur) => cur === "INR" ? "₹" : "$";
+  const fundNum = (cur, v) => cur === "INR" ? fmtInr(v) : fmtUsd(v);
+  const fundsWatchlistContent = E("div", null,
+    fundsLoading
+      ? E("div", { className: "empty" }, "LOADING FUNDS...")
+      : fundsError
+        ? E("div", { className: "empty" }, fundsError)
+        : FUND_GROUPS.map((group) => {
+            const rows = funds.filter((f) => f.group === group);
+            return E("div", { key: group },
+              E("div", { className: "india-section-label" }, group),
+              E("table", null,
+                E("thead", null,
+                  E("tr", null,
+                    E("th", null, "FUND"),
+                    E("th", { style: { textAlign: "right" } }, "PRICE"),
+                    E("th", { style: { textAlign: "right" } }, "CHANGE"),
+                    E("th", { style: { textAlign: "right" } }, "CHANGE %"),
+                    E("th", { style: { textAlign: "right" } }, "HIGH"),
+                    E("th", { style: { textAlign: "right" } }, "LOW")
+                  )
+                ),
+                E("tbody", null,
+                  rows.map((f) =>
+                    f.error
+                      ? E("tr", { key: f.symbol }, E("td", { colSpan: 6, className: "empty" }, f.label + " — UNAVAILABLE"))
+                      : E("tr", {
+                          key: f.symbol,
+                          className: f.symbol === selectedFund ? "selected" : "",
+                          onClick: () => { setSelectedFund(f.symbol); setDetailView({ symbol: f.symbol, source: "stocks", rowData: { ...f, name: f.label } }); }
+                        },
+                          E("td", { style: { color: "var(--cyan)" } }, f.label),
+                          E("td", { className: "mono-num", style: { textAlign: "right" } }, fundSym(f.currency) + fundNum(f.currency, f.price)),
+                          E("td", { className: "mono-num " + (f.change >= 0 ? "up" : "down"), style: { textAlign: "right" } }, (f.change >= 0 ? "+" : "") + fundNum(f.currency, f.change)),
+                          E("td", { className: "mono-num " + (f.changePct >= 0 ? "up" : "down"), style: { textAlign: "right" } }, (f.changePct >= 0 ? "+" : "") + (f.changePct || 0).toFixed(2) + "%"),
+                          E("td", { className: "mono-num", style: { textAlign: "right" } }, fundSym(f.currency) + fundNum(f.currency, f.high)),
+                          E("td", { className: "mono-num", style: { textAlign: "right" } }, fundSym(f.currency) + fundNum(f.currency, f.low))
+                        )
+                  )
+                )
+              )
+            );
+          })
+  );
+
   const searchPanelContent = E("div", null,
     E("div", { className: "pf-form", style: { marginBottom: 10 } },
       E("input", {
@@ -3553,6 +3663,7 @@ function App({ onLogout, user }) {
     E("div", { className: "tabs" },
       E("span", { className: "tab" + (tab === "india" ? " active" : ""), onClick: () => setTab("india") }, "INDIA"),
       E("span", { className: "tab" + (tab === "commodities" ? " active" : ""), onClick: () => setTab("commodities") }, "COMMODITIES"),
+      E("span", { className: "tab" + (tab === "funds" ? " active" : ""), onClick: () => setTab("funds") }, "REITS & ETFS"),
       E("span", { className: "tab" + (tab === "stocks" ? " active" : ""), onClick: () => setTab("stocks") }, "INTERNATIONAL STOCKS"),
       E("span", { className: "tab" + (tab === "crypto" ? " active" : ""), onClick: () => setTab("crypto") }, "CRYPTO"),
       E("span", { className: "tab" + (tab === "search" ? " active" : ""), onClick: () => setTab("search") }, "SEARCH")
@@ -3561,6 +3672,7 @@ function App({ onLogout, user }) {
       : tab === "stocks" ? watchlistContent
       : tab === "india" ? indiaWatchlistContent
       : tab === "commodities" ? commoditiesWatchlistContent
+      : tab === "funds" ? fundsWatchlistContent
       : searchPanelContent
   );
 
@@ -3703,6 +3815,42 @@ function App({ onLogout, user }) {
           })
         )
       : E("div", { className: "empty" }, "SELECT A COMMODITY FROM THE WATCHLIST");
+  } else if (tab === "funds") {
+    const fd = funds.find((f) => f.symbol === selectedFund);
+    const fs = fd ? (fd.currency === "INR" ? "₹" : "$") : "$";
+    const fn = fd ? (fd.currency === "INR" ? fmtInr : fmtUsd) : fmtUsd;
+    detailContent = fd && !fd.error
+      ? E("div", null,
+          E("div", { style: { marginBottom: 10 } },
+            E("span", { style: { color: "var(--cyan)", fontSize: 16, fontWeight: 700 } }, fd.label),
+            " ",
+            E("span", { style: { color: "var(--dim)" } }, fd.group)
+          ),
+          E("div", { className: "price-big mono-num" },
+            fs + fn(fd.price),
+            " ",
+            E("span", { style: { fontSize: 15 }, className: fd.changePct >= 0 ? "up" : "down" },
+              (fd.changePct >= 0 ? "▲ " : "▼ ") + Math.abs(fd.changePct || 0).toFixed(2) + "%")
+          ),
+          E("div", { className: "detail-grid", style: { marginTop: 14 } },
+            E("div", null, E("div", { className: "k" }, "PREV CLOSE"), E("div", { className: "v mono-num" }, fs + fn(fd.prevClose))),
+            E("div", null, E("div", { className: "k" }, "CHANGE"), E("div", { className: "v mono-num " + (fd.change >= 0 ? "up" : "down") }, fs + fn(fd.change))),
+            E("div", null, E("div", { className: "k" }, "DAY HIGH"), E("div", { className: "v mono-num" }, fs + fn(fd.high))),
+            E("div", null, E("div", { className: "k" }, "DAY LOW"), E("div", { className: "v mono-num" }, fs + fn(fd.low))),
+            E("div", null, E("div", { className: "k" }, "52W HIGH"), E("div", { className: "v mono-num" }, fs + fn(fd.fiftyTwoWeekHigh))),
+            E("div", null, E("div", { className: "k" }, "52W LOW"), E("div", { className: "v mono-num" }, fs + fn(fd.fiftyTwoWeekLow)))
+          ),
+          E("h2", { style: { marginTop: 4 } }, "CHART"),
+          E("div", { className: "chart-wrap" }, E(Chart, { chartType, ohlc: stocksChartData })),
+          E(ChartControls, { chartType, setChartType, range: chartRange, setRange: setChartRange }),
+          E(MarketSentiment, {
+            price: fd.price,
+            fiftyTwoWeekHigh: fd.fiftyTwoWeekHigh,
+            fiftyTwoWeekLow: fd.fiftyTwoWeekLow,
+            ohlc: stocksChartData
+          })
+        )
+      : E("div", { className: "empty" }, "SELECT A REIT OR ETF FROM THE WATCHLIST");
   } else {
     detailContent = !selectedSearchResult
       ? E("div", { className: "empty" }, "SEARCH AND SELECT A RESULT")
