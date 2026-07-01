@@ -1927,16 +1927,17 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
 
   useEffect(() => { loadNews(); }, [loadNews]);
 
-  useEffect(() => {
+  const loadFundamentals = useCallback(() => {
     if (source === "crypto") return;
     fetch(`${proxyBase}/api/fundamentals?symbol=${encodeURIComponent(symbol)}`)
       .then(r => r.json())
       .then(data => setFundamentals(data))
       .catch(() => setFundamentals({}));
-  }, [symbol, source]);
+  }, [symbol, source, proxyBase]);
+  useEffect(() => { loadFundamentals(); }, [loadFundamentals]);
 
   // Company profile + financial statements (12h server cache)
-  useEffect(() => {
+  const loadCompany = useCallback(() => {
     if (source === "crypto") return;
     setCompanyLoading(true);
     fetch(`${proxyBase}/api/company?symbol=${encodeURIComponent(symbol)}`)
@@ -1944,7 +1945,10 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
       .then(data => setCompany(data || {}))
       .catch(() => setCompany({}))
       .finally(() => setCompanyLoading(false));
-  }, [symbol, source]);
+  }, [symbol, source, proxyBase]);
+  useEffect(() => { loadCompany(); }, [loadCompany]);
+
+  const retryFundamentals = useCallback(() => { loadCompany(); loadFundamentals(); }, [loadCompany, loadFundamentals]);
 
   const loadPeers = useCallback(() => {
     const peerSyms = getPeerSymbols(symbol);
@@ -1987,6 +1991,9 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
   const curSym = symOf(currency);
   const ratios = (company && company.ratios) || {};
   const profile = (company && company.profile) || {};
+  const fundamentalsAvailable = Object.values(ratios).some(v => v != null)
+    || !!profile.summary || !!profile.sector || !!profile.name;
+  const fundamentalsUnavailable = source !== "crypto" && !companyLoading && company != null && !fundamentalsAvailable;
   const pctOf = (v) => v == null ? "--" : (v * 100).toFixed(2) + "%";
   const fmtRev = (v) => {
     if (v == null) return "--";
@@ -2164,6 +2171,20 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
           )
   );
 
+  // Shown when the fundamentals provider is rate-limiting the server
+  const unavailableEl = (extraNote) => E("div", { className: "panel", style: { flexShrink: 0 } },
+    E("div", { style: { padding: "26px 16px", textAlign: "center" } },
+      E("div", { style: { color: "var(--amber)", fontSize: 13, fontWeight: 700, letterSpacing: 1, marginBottom: 10 } }, "FUNDAMENTALS TEMPORARILY UNAVAILABLE"),
+      E("div", { style: { color: "var(--dim)", fontSize: 12, lineHeight: 1.7, marginBottom: 18, maxWidth: 480, marginLeft: "auto", marginRight: "auto" } },
+        (extraNote || "Company profile, ratios and financial statements") + " couldn't load — the data provider is rate-limiting our server. Price, chart, sentiment and news are live and unaffected. This usually clears in a minute or two.",
+      ),
+      E("button", {
+        onClick: retryFundamentals,
+        style: { background: "var(--amber)", border: "none", color: "#000", fontFamily: "inherit", fontSize: 11, fontWeight: 700, letterSpacing: 1, padding: "8px 20px", cursor: "pointer", borderRadius: 2 }
+      }, "↻ RETRY")
+    )
+  );
+
   // ── Financial statements table ──
   const financialTable = (title, rows) => {
     if (!rows || rows.length === 0) return null;
@@ -2230,7 +2251,7 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
   const financialsContent = companyLoading && !company
     ? E("div", { className: "empty" }, "LOADING FINANCIALS...")
     : !hasFin
-      ? E("div", { className: "empty" }, "FINANCIAL STATEMENTS UNAVAILABLE FOR THIS SECURITY" + (company && company._debug ? " (" + company._debug + ")" : ""))
+      ? unavailableEl("Quarterly, annual, balance-sheet and cash-flow statements")
       : E("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
           growthRowEl,
           financialTable("QUARTERLY RESULTS", company.quarterly),
@@ -2294,10 +2315,10 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
   const overviewBody = E("div", { style: { flex: 1, minHeight: 0, overflow: "hidden", padding: 10, display: "grid", gridTemplateColumns: "3fr 2fr", gridTemplateRows: "1fr", gap: 10, alignItems: "stretch" } },
     E("div", { style: { display: "flex", flexDirection: "column", gap: 10, overflowY: "auto", minHeight: 0 } },
       chartPanelEl,
-      prosConsEl,
-      keyRatiosEl,
-      aboutEl,
-      E("div", { className: "panel", style: { flexShrink: 0 } }, E(FundamentalsGrid, { d, fundamentals, currency, isInr }))
+      ...(fundamentalsUnavailable
+        ? [unavailableEl(null)]
+        : [prosConsEl, keyRatiosEl, aboutEl,
+           E("div", { className: "panel", style: { flexShrink: 0 } }, E(FundamentalsGrid, { d, fundamentals, currency, isInr }))])
     ),
     newsPanelEl
   );
