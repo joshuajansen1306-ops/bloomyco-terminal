@@ -105,8 +105,46 @@ def _fetch_company(symbol):
         print(f"[COMPANY] {symbol} annual error: {e}", flush=True)
         annual = []
 
-    data = {"profile": profile, "ratios": ratios, "quarterly": quarterly, "annual": annual}
-    has_content = any(profile.values()) or any(v is not None for v in ratios.values()) or quarterly or annual
+    def build_statement(df, limit, rows_map, label_fn):
+        cols = list(df.columns) if (df is not None and not df.empty) else []
+        extracted = {k: _df_row(df, *names) for k, names in rows_map.items()}
+        out = []
+        for i in range(min(limit, len(cols))):
+            row = {"period": label_fn(cols[i])}
+            for k, series in extracted.items():
+                row[k] = series[i] if series and i < len(series) else None
+            out.append(row)
+        return out
+
+    bs_map = {
+        "totalAssets":      ("Total Assets",),
+        "totalLiabilities": ("Total Liabilities Net Minority Interest", "Total Liabilities"),
+        "equity":           ("Stockholders Equity", "Total Equity Gross Minority Interest"),
+        "totalDebt":        ("Total Debt",),
+        "cash":             ("Cash And Cash Equivalents", "Cash Cash Equivalents And Short Term Investments"),
+    }
+    cf_map = {
+        "operating":    ("Operating Cash Flow",),
+        "investing":    ("Investing Cash Flow",),
+        "financing":    ("Financing Cash Flow",),
+        "freeCashFlow": ("Free Cash Flow",),
+        "capex":        ("Capital Expenditure",),
+    }
+    try:
+        balance_sheet = build_statement(t.balance_sheet, 4, bs_map, lambda c: "FY" + str(c.year))
+    except Exception as e:
+        print(f"[COMPANY] {symbol} balance sheet error: {e}", flush=True)
+        balance_sheet = []
+    try:
+        cash_flow = build_statement(t.cashflow, 4, cf_map, lambda c: "FY" + str(c.year))
+    except Exception as e:
+        print(f"[COMPANY] {symbol} cash flow error: {e}", flush=True)
+        cash_flow = []
+
+    data = {"profile": profile, "ratios": ratios, "quarterly": quarterly, "annual": annual,
+            "balanceSheet": balance_sheet, "cashFlow": cash_flow}
+    has_content = (any(profile.values()) or any(v is not None for v in ratios.values())
+                   or quarterly or annual or balance_sheet or cash_flow)
     return data, bool(has_content)
 
 def get_company(symbol):

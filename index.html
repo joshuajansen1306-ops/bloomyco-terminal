@@ -2154,14 +2154,54 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
     );
   };
 
+  // Generic statement table (balance sheet, cash flow)
+  const stmtTable = (title, rows, cols) => {
+    if (!rows || rows.length === 0) return null;
+    return E("div", { className: "panel", style: { flexShrink: 0 } },
+      E("h2", null, title),
+      E("table", null,
+        E("thead", null, E("tr", null,
+          E("th", null, "PERIOD"),
+          ...cols.map(c => E("th", { key: c.key, style: { textAlign: "right" } }, c.label))
+        )),
+        E("tbody", null, rows.map((r, i) => E("tr", { key: i },
+          E("td", { style: { color: "var(--cyan)" } }, r.period),
+          ...cols.map(c => {
+            const v = r[c.key];
+            const cls = c.colorSign && v != null ? (v >= 0 ? "up" : "down") : "";
+            return E("td", { key: c.key, className: "mono-num " + cls, style: { textAlign: "right" } }, fmtRev(v));
+          })
+        )))
+      )
+    );
+  };
+
+  const hasFin = company && (
+    (company.quarterly && company.quarterly.length) ||
+    (company.annual && company.annual.length) ||
+    (company.balanceSheet && company.balanceSheet.length) ||
+    (company.cashFlow && company.cashFlow.length)
+  );
   const financialsContent = companyLoading && !company
     ? E("div", { className: "empty" }, "LOADING FINANCIALS...")
-    : (!company || ((!company.quarterly || !company.quarterly.length) && (!company.annual || !company.annual.length)))
+    : !hasFin
       ? E("div", { className: "empty" }, "FINANCIAL STATEMENTS UNAVAILABLE FOR THIS SECURITY" + (company && company._debug ? " (" + company._debug + ")" : ""))
       : E("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
           growthRowEl,
           financialTable("QUARTERLY RESULTS", company.quarterly),
-          financialTable("ANNUAL RESULTS", company.annual)
+          financialTable("ANNUAL RESULTS", company.annual),
+          stmtTable("BALANCE SHEET", company.balanceSheet, [
+            { label: "TOTAL ASSETS", key: "totalAssets" },
+            { label: "EQUITY", key: "equity" },
+            { label: "TOTAL DEBT", key: "totalDebt" },
+            { label: "CASH", key: "cash" }
+          ]),
+          stmtTable("CASH FLOW", company.cashFlow, [
+            { label: "OPERATING", key: "operating", colorSign: true },
+            { label: "INVESTING", key: "investing", colorSign: true },
+            { label: "FINANCING", key: "financing", colorSign: true },
+            { label: "FREE CASH FLOW", key: "freeCashFlow", colorSign: true }
+          ])
         );
 
   // ── Peers comparison ──
