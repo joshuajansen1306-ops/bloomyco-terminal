@@ -1827,12 +1827,23 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
 
   useEffect(() => {
     setNewsLoading(true);
-    const q = source === "crypto" ? (rowData?.name || symbol) : symbol.split(".")[0];
-    fetch(`${proxyBase}/api/yahoo-search?q=${encodeURIComponent(q)}&quotesCount=0&newsCount=25`)
-      .then(r => r.json())
-      .then(data => {
-        let items = (data.news || []).slice().sort((a, b) => (b.providerPublishTime || 0) - (a.providerPublishTime || 0));
-        setNews(items);
+    const primary = source === "crypto"
+      ? (rowData?.name || symbol)
+      : (rowData?.name || symbol.split(".")[0]);
+    const fallback = source === "crypto"
+      ? "cryptocurrency market"
+      : source === "india"
+        ? "Indian stock market"
+        : "stock market";
+    const fetchNewsFor = (q) =>
+      fetch(`${proxyBase}/api/yahoo-search?q=${encodeURIComponent(q)}&quotesCount=0&newsCount=25`)
+        .then(r => r.json())
+        .then(data => (data.news || []).slice().sort((a, b) => (b.providerPublishTime || 0) - (a.providerPublishTime || 0)));
+
+    fetchNewsFor(primary)
+      .then(items => {
+        if (items.length > 0) { setNews(items); return; }
+        return fetchNewsFor(fallback).then(setNews);
       })
       .catch(() => setNews([]))
       .finally(() => setNewsLoading(false));
