@@ -1825,7 +1825,7 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
     }
   }, [symbol, source, chartRange]);
 
-  useEffect(() => {
+  const loadNews = useCallback(() => {
     setNewsLoading(true);
     const primary = source === "crypto"
       ? (rowData?.name || symbol)
@@ -1840,14 +1840,16 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
         .then(r => r.json())
         .then(data => (data.news || []).slice().sort((a, b) => (b.providerPublishTime || 0) - (a.providerPublishTime || 0)));
 
-    fetchNewsFor(primary)
+    return fetchNewsFor(primary)
       .then(items => {
         if (items.length > 0) { setNews(items); return; }
         return fetchNewsFor(fallback).then(setNews);
       })
       .catch(() => setNews([]))
       .finally(() => setNewsLoading(false));
-  }, [symbol, source]);
+  }, [symbol, source, rowData, proxyBase]);
+
+  useEffect(() => { loadNews(); }, [loadNews]);
 
   useEffect(() => {
     if (source === "crypto") return;
@@ -1905,7 +1907,21 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
         )
       ),
       E("div", { className: "panel", style: { overflowY: "auto" } },
-        E("h2", null, "LATEST NEWS"),
+        E("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 } },
+          E("h2", { style: { margin: 0 } }, "LATEST NEWS"),
+          E("button", {
+            onClick: () => loadNews(),
+            disabled: newsLoading,
+            style: {
+              background: "transparent", border: "1px solid var(--border)", color: "var(--dim)",
+              fontFamily: "inherit", fontSize: 10, letterSpacing: 1, padding: "3px 8px",
+              cursor: newsLoading ? "default" : "pointer", opacity: newsLoading ? 0.5 : 1,
+              transition: "color 0.15s, border-color 0.15s"
+            },
+            onMouseEnter: (e) => { if (!newsLoading) { e.target.style.color = "var(--amber)"; e.target.style.borderColor = "var(--amber)"; } },
+            onMouseLeave: (e) => { e.target.style.color = "var(--dim)"; e.target.style.borderColor = "var(--border)"; }
+          }, newsLoading ? "↻ ..." : "↻ REFRESH")
+        ),
         newsEl
       )
     )
