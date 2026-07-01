@@ -30,6 +30,105 @@ ERROR_CACHE_TTL = 45
 _coingecko_cache = {}
 COINGECKO_TTL = 120  # categories change slowly — cache 2 minutes
 
+_company_cache = {}
+COMPANY_TTL = 43200      # profile + financials change quarterly at most — cache 12h
+COMPANY_ERROR_TTL = 60   # retry failures after a minute
+
+def _df_row(df, *names):
+    """Return a list of values for the first matching row label in a yfinance DataFrame."""
+    if df is None or getattr(df, "empty", True):
+        return None
+    for nm in names:
+        if nm in df.index:
+            out = []
+            for i in range(len(df.columns)):
+                v = df.loc[nm].iloc[i]
+                out.append(float(v) if v == v else None)  # NaN check
+            return out
+    return None
+
+def _fetch_company(symbol):
+    t = yf.Ticker(symbol)
+    info = t.info or {}
+    print(f"[COMPANY] {symbol}: info has {len(info)} keys", flush=True)
+
+    profile = {
+        "name":      info.get("longName") or info.get("shortName"),
+        "sector":    info.get("sector"),
+        "industry":  info.get("industry"),
+        "website":   info.get("website"),
+        "employees": info.get("fullTimeEmployees"),
+        "city":      info.get("city"),
+        "country":   info.get("country"),
+        "summary":   info.get("longBusinessSummary"),
+        "exchange":  info.get("fullExchangeName") or info.get("exchange"),
+    }
+    ratios = {
+        "marketCap":     info.get("marketCap"),
+        "trailingPE":    info.get("trailingPE"),
+        "forwardPE":     info.get("forwardPE"),
+        "priceToBook":   info.get("priceToBook"),
+        "bookValue":     info.get("bookValue"),
+        "roe":           info.get("returnOnEquity"),
+        "roa":           info.get("returnOnAssets"),
+        "debtToEquity":  info.get("debtToEquity"),
+        "dividendYield": info.get("dividendYield") or info.get("trailingAnnualDividendYield"),
+        "eps":           info.get("trailingEps"),
+        "beta":          info.get("beta"),
+        "profitMargin":  info.get("profitMargins"),
+        "revenueGrowth": info.get("revenueGrowth"),
+    }
+
+    def build_periods(df, limit, label_fn):
+        cols = list(df.columns) if (df is not None and not df.empty) else []
+        rev  = _df_row(df, "Total Revenue", "TotalRevenue")
+        ni   = _df_row(df, "Net Income", "NetIncome", "Net Income Common Stockholders")
+        oi   = _df_row(df, "Operating Income", "OperatingIncome")
+        periods = []
+        for i in range(min(limit, len(cols))):
+            periods.append({
+                "period":    label_fn(cols[i]),
+                "revenue":   rev[i] if rev and i < len(rev) else None,
+                "netIncome": ni[i]  if ni  and i < len(ni)  else None,
+                "operatingIncome": oi[i] if oi and i < len(oi) else None,
+            })
+        return periods
+
+    try:
+        quarterly = build_periods(t.quarterly_financials, 6, lambda c: str(c.date()))
+    except Exception as e:
+        print(f"[COMPANY] {symbol} quarterly error: {e}", flush=True)
+        quarterly = []
+    try:
+        annual = build_periods(t.financials, 5, lambda c: "FY" + str(c.year))
+    except Exception as e:
+        print(f"[COMPANY] {symbol} annual error: {e}", flush=True)
+        annual = []
+
+    data = {"profile": profile, "ratios": ratios, "quarterly": quarterly, "annual": annual}
+    has_content = any(profile.values()) or any(v is not None for v in ratios.values()) or quarterly or annual
+    return data, bool(has_content)
+
+def get_company(symbol):
+    now = time.time()
+    if symbol in _company_cache:
+        ts, data, ok = _company_cache[symbol]
+        ttl = COMPANY_TTL if ok else COMPANY_ERROR_TTL
+        if now - ts < ttl:
+            return data
+    if not _yf_ok:
+        return {"_debug": "yfinance not importable"}
+    data, ok = {}, False
+    try:
+        data, ok = _fetch_company(symbol)
+        if not ok:
+            data = {"_debug": "no company fields available"}
+    except Exception as e:
+        print(f"[COMPANY] {symbol}: {type(e).__name__}: {e}", flush=True)
+        data = {"_debug": f"{type(e).__name__}: {e}"}
+    _company_cache[symbol] = (now, data, ok)
+    return data
+
 def _fetch_fundamentals_once(symbol):
     t = yf.Ticker(symbol)
     info = t.info or {}
@@ -97,6 +196,9 @@ class Handler(SimpleHTTPRequestHandler):
         if parsed.path == "/api/fundamentals":
             self.handle_fundamentals(parsed)
             return
+        if parsed.path == "/api/company":
+            self.handle_company(parsed)
+            return
         if parsed.path == "/api/coingecko-categories":
             self.handle_coingecko_categories()
             return
@@ -153,6 +255,24 @@ class Handler(SimpleHTTPRequestHandler):
             self.wfile.write(body)
         except Exception as e:
             self.send_json_error(502, "fundamentals error: " + str(e))
+
+    def handle_company(self, parsed):
+        qs = parse_qs(parsed.query)
+        symbol = (qs.get("symbol") or [""])[0]
+        if not symbol:
+            self.send_json_error(400, "missing symbol parameter")
+            return
+        try:
+            data = get_company(symbol)
+            body = json.dumps(data).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        except Exception as e:
+            self.send_json_error(502, "company error: " + str(e))
 
     def handle_coingecko_categories(self):
         now = time.time()
