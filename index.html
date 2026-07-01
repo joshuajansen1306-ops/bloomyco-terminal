@@ -1961,6 +1961,81 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
     return (curSym || "") + (Math.abs(b) >= 1 ? b.toFixed(2) + "B" : (v / 1e6).toFixed(1) + "M");
   };
 
+  // ── Compounded growth (CAGR) from annual financials (newest-first) ──
+  const annualRows = (company && company.annual) || [];
+  const cagrOf = (key) => {
+    const vals = annualRows.map(r => r[key]).filter(v => v != null && v > 0);
+    if (vals.length < 2) return null;
+    const years = vals.length - 1;
+    return { rate: Math.pow(vals[0] / vals[vals.length - 1], 1 / years) - 1, years };
+  };
+  const revCagr = cagrOf("revenue");
+  const profitCagr = cagrOf("netIncome");
+
+  // ── Pros & Cons (rule-based, screener-style) ──
+  const pros = [], cons = [];
+  const de = ratios.debtToEquity != null ? ratios.debtToEquity / 100 : null;
+  const latestAnnualNI = annualRows.length ? annualRows[0].netIncome : null;
+  if (de != null && de < 0.15) pros.push("Company is almost debt free.");
+  if (ratios.roe != null && ratios.roe > 0.15) pros.push("Good return on equity (ROE) of " + (ratios.roe * 100).toFixed(1) + "%.");
+  if (profitCagr && profitCagr.rate > 0.20) pros.push("Strong profit growth of " + (profitCagr.rate * 100).toFixed(0) + "% CAGR over " + profitCagr.years + " years.");
+  if (revCagr && revCagr.rate > 0.15) pros.push("Healthy revenue growth of " + (revCagr.rate * 100).toFixed(0) + "% CAGR over " + revCagr.years + " years.");
+  if (ratios.profitMargin != null && ratios.profitMargin > 0.15) pros.push("Strong profit margin of " + (ratios.profitMargin * 100).toFixed(1) + "%.");
+  if (ratios.trailingPE != null && ratios.trailingPE > 0 && ratios.trailingPE < 15) pros.push("Attractively valued at a P/E of " + ratios.trailingPE.toFixed(1) + ".");
+  if (ratios.priceToBook != null && ratios.priceToBook > 0 && ratios.priceToBook < 1) pros.push("Trading below book value (P/B " + ratios.priceToBook.toFixed(2) + ").");
+  if (ratios.roa != null && ratios.roa > 0.12) pros.push("Efficient asset use — return on assets of " + (ratios.roa * 100).toFixed(1) + "%.");
+
+  if (ratios.priceToBook != null && ratios.priceToBook > 5) cons.push("Trading at " + ratios.priceToBook.toFixed(2) + "x its book value.");
+  if (ratios.trailingPE != null && ratios.trailingPE > 50) cons.push("Expensive valuation at a P/E of " + ratios.trailingPE.toFixed(0) + ".");
+  if (ratios.roe != null && ratios.roe < 0.10) cons.push("Low return on equity of " + (ratios.roe * 100).toFixed(1) + "%.");
+  if (de != null && de > 1.5) cons.push("High debt-to-equity of " + de.toFixed(2) + ".");
+  if ((ratios.dividendYield == null || ratios.dividendYield === 0) && latestAnnualNI != null && latestAnnualNI > 0) cons.push("Not paying a dividend despite reporting profits.");
+  if (ratios.profitMargin != null && ratios.profitMargin < 0.05 && ratios.profitMargin >= 0) cons.push("Thin profit margin of " + (ratios.profitMargin * 100).toFixed(1) + "%.");
+  if (latestAnnualNI != null && latestAnnualNI < 0) cons.push("Reported a net loss in the latest financial year.");
+
+  const prosConsEl = source === "crypto" ? null : E("div", { className: "panel", style: { flexShrink: 0 } },
+    E("h2", null, "ANALYSIS — PROS & CONS"),
+    (companyLoading && !company)
+      ? E("div", { className: "empty" }, "LOADING...")
+      : (pros.length === 0 && cons.length === 0)
+        ? E("div", { className: "empty" }, "NOT ENOUGH DATA FOR ANALYSIS")
+        : E("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 } },
+            E("div", null,
+              E("div", { style: { color: "var(--green)", fontSize: 11, fontWeight: 700, letterSpacing: 1, marginBottom: 6 } }, "▲ PROS"),
+              pros.length
+                ? E("ul", { style: { margin: 0, paddingLeft: 16, color: "#ccc", fontSize: 11.5, lineHeight: 1.7 } }, pros.map((p, i) => E("li", { key: i }, p)))
+                : E("div", { style: { color: "var(--dim)", fontSize: 11 } }, "—")
+            ),
+            E("div", null,
+              E("div", { style: { color: "var(--red)", fontSize: 11, fontWeight: 700, letterSpacing: 1, marginBottom: 6 } }, "▼ CONS"),
+              cons.length
+                ? E("ul", { style: { margin: 0, paddingLeft: 16, color: "#ccc", fontSize: 11.5, lineHeight: 1.7 } }, cons.map((c, i) => E("li", { key: i }, c)))
+                : E("div", { style: { color: "var(--dim)", fontSize: 11 } }, "—")
+            )
+          ),
+    E("div", { style: { color: "var(--dim)", fontSize: 10, marginTop: 10, fontStyle: "italic" } }, "Auto-generated from reported ratios — not investment advice.")
+  );
+
+  const growthCard = (title, cagrObj, ttm) => E("div", { className: "panel", style: { flex: 1, minWidth: 150 } },
+    E("div", { style: { color: "var(--amber)", fontSize: 10, letterSpacing: 1, marginBottom: 8 } }, title),
+    cagrObj
+      ? E("div", null,
+          E("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 } },
+            E("span", { style: { color: "var(--dim)" } }, cagrObj.years + "Y CAGR"),
+            E("span", { className: "mono-num " + (cagrObj.rate >= 0 ? "up" : "down") }, (cagrObj.rate >= 0 ? "+" : "") + (cagrObj.rate * 100).toFixed(1) + "%")
+          ),
+          ttm != null ? E("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 12 } },
+            E("span", { style: { color: "var(--dim)" } }, "TTM"),
+            E("span", { className: "mono-num " + (ttm >= 0 ? "up" : "down") }, (ttm >= 0 ? "+" : "") + (ttm * 100).toFixed(1) + "%")
+          ) : null
+        )
+      : E("div", { style: { color: "var(--dim)", fontSize: 11 } }, "N/A")
+  );
+  const growthRowEl = E("div", { style: { display: "flex", gap: 10, marginBottom: 10, flexWrap: "wrap" } },
+    growthCard("COMPOUNDED SALES GROWTH", revCagr, ratios.revenueGrowth),
+    growthCard("COMPOUNDED PROFIT GROWTH", profitCagr, null)
+  );
+
   const newsEl = newsLoading
     ? E("div", { className: "empty" }, "LOADING NEWS...")
     : news.length === 0
@@ -2084,6 +2159,7 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
     : (!company || ((!company.quarterly || !company.quarterly.length) && (!company.annual || !company.annual.length)))
       ? E("div", { className: "empty" }, "FINANCIAL STATEMENTS UNAVAILABLE FOR THIS SECURITY" + (company && company._debug ? " (" + company._debug + ")" : ""))
       : E("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
+          growthRowEl,
           financialTable("QUARTERLY RESULTS", company.quarterly),
           financialTable("ANNUAL RESULTS", company.annual)
         );
@@ -2133,6 +2209,7 @@ function StockDetailPage({ symbol, source, rowData, onBack }) {
   const overviewBody = E("div", { style: { flex: 1, minHeight: 0, overflow: "hidden", padding: 10, display: "grid", gridTemplateColumns: "3fr 2fr", gridTemplateRows: "1fr", gap: 10, alignItems: "stretch" } },
     E("div", { style: { display: "flex", flexDirection: "column", gap: 10, overflowY: "auto", minHeight: 0 } },
       chartPanelEl,
+      prosConsEl,
       keyRatiosEl,
       aboutEl,
       E("div", { className: "panel", style: { flexShrink: 0 } }, E(FundamentalsGrid, { d, fundamentals, currency, isInr }))
